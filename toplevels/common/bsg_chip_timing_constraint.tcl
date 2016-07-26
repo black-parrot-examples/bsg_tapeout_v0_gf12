@@ -4,7 +4,8 @@
 # File: bsg_chip_timing_constraint.tcl
 #
 # Authors: Michael Taylor
-#          Luis Vega (refactored)
+#          Chun Zhao
+#          Luis Vega
 #
 # Usage example:
 #
