@@ -11,35 +11,19 @@
 #
 # source $::env(BSG_DESIGNS_DIR)/toplevels/common/bsg_chip_timing_constraint.tcl
 #
-# bsg_chip_timing_constraint -package ucsd_bsg_332 \
-#                            -core_clk_port [get_ports p_misc_L_i[3]] \
-#                            -core_clk_name core_clk \
-#                            -core_clk_period 3.5 \
-#                            -master_io_clk_port [get_ports p_PLL_CLK_i] \
-#                            -master_io_clk_name master_io_clk \
-#                            -master_io_clk_period 2.35
-#
-# Notes:
-#
-#  1. Global variables are defined using "variable" instead of "global" because
-#     of http://wiki.tcl.tk/1177. For example, core_clk_period is a global
-#     variable and it's defined as:
-#
-#       variable core_clk_period $bsg_core_clk_period
-#
-#  2. Current global variables, that can be accessed by other scripts, are:
-#     * core_clk_name
-#     * core_clk_period
-#     * master_io_clk_name
-#     * master_io_clk_period
-#     * sdo_A_output_ports
-#     * sdo_B_output_ports
-#     * sdo_C_output_ports
-#     * sdo_D_output_ports
-#
+# bsg_chip_timing_constraint
+#   -package ucsd_bsg_332 \
+#   -reset_port [get_ports p_reset_i] \
+#   -core_clk_port [get_ports p_misc_L_i[3]] \
+#   -core_clk_name core_clk \
+#   -core_clk_period 3.5 \
+#   -master_io_clk_port [get_ports p_PLL_CLK_i] \
+#   -master_io_clk_name master_io_clk \
+#   -master_io_clk_period 2.35
 #-------------------------------------------------------------------------------
 
-proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_core_clk_port \
+proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
+                                              bsg_core_clk_port \
                                               bsg_core_clk_name \
                                               bsg_core_clk_period \
                                               bsg_master_io_clk_port \
@@ -48,12 +32,8 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_core_clk_port \
 
   puts "INFO\[BSG\]: begin bsg_chip_ucsd_bsg_332_timing_constraint function in script [info script]\n"
 
-  # set core_clk_period and master_io_clk_period as global
-  variable core_clk_period $bsg_core_clk_period
-  variable master_io_clk_period $bsg_master_io_clk_period
-
   # aka io master frequency
-  set out_io_clk_period $master_io_clk_period
+  set out_io_clk_period $bsg_master_io_clk_period
 
   # because of DDR, the input clocks are half the frequency and the corresponding
   # logic runs at half the frequency but there is nothing to say that we would
@@ -75,17 +55,17 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_core_clk_port \
 
   # say that reset gets 50% of the clock cycle to propagate inside the chip.
   set max_async_reset_percent 50
-  set max_async_reset_delay [expr ((100-$max_async_reset_percent) * $core_clk_period) / 100.0]
+  set max_async_reset_delay [expr ((100-$max_async_reset_percent) * $bsg_core_clk_period) / 100.0]
 
   # clock uncertainty
 
   set clock_uncertainty_percent 0
 
-  set core_clk_uncertainty      [expr ($clock_uncertainty_percent * $core_clk_period) / 100.0]
+  set core_clk_uncertainty      [expr ($clock_uncertainty_percent * $bsg_core_clk_period) / 100.0]
   set out_io_clk_uncertainty    [expr ($clock_uncertainty_percent * $out_io_clk_period) / 100.0]
   set in_io_clk_uncertainty     [expr ($clock_uncertainty_percent * $in_io_clk_period) / 100.0]
   set token_clk_uncertainty     [expr ($clock_uncertainty_percent * $in_token_clk_period) / 100.0]
-  set master_io_clk_uncertainty [expr ($clock_uncertainty_percent * $master_io_clk_period) / 100.0]
+  set master_io_clk_uncertainty [expr ($clock_uncertainty_percent * $bsg_master_io_clk_period) / 100.0]
 
   # Current design to Synopsys Design Constraints (SDC).
   set sdc_current_design [current_design]
@@ -112,7 +92,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_core_clk_port \
   puts "\nConstrain design [get_attribute $sdc_current_design full_name] timing with the following settings:\n"
   puts "Parameter                             Value"
   puts "-----------------------               -------------------"
-  puts "Core main clock period                $core_clk_period ns"
+  puts "Core main clock period                $bsg_core_clk_period ns"
   puts "Out IO clock period                   $out_io_clk_period ns"
   puts "In IO clock period                    $in_io_clk_period ns"
   puts "Max allowed on-chip in  IO skew (%)   $max_in_io_skew_percent %"
@@ -130,15 +110,11 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_core_clk_port \
   # creates a clock object and defines its waveform in the current design.
   # create_clock -period $CLK_PERIOD -name $CLK_NAME $CLK_PORT
 
-  variable $bsg_core_clk_name
-
-  create_clock -period $core_clk_period \
+  create_clock -period $bsg_core_clk_period \
                -name $bsg_core_clk_name \
                $bsg_core_clk_port
 
-  variable $bsg_master_io_clk_name
-
-  create_clock -period $master_io_clk_period \
+  create_clock -period $bsg_master_io_clk_period \
                -name $bsg_master_io_clk_name \
                $bsg_master_io_clk_port
 
@@ -195,10 +171,10 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_core_clk_port \
   #      nonetheless, we restrict the timing of this path.
   #----------------------------------------------------------------------------
 
-  set cdc_delay [lindex [lsort -real [list $core_clk_period \
+  set cdc_delay [lindex [lsort -real [list $bsg_core_clk_period \
                                            $in_token_clk_period \
                                            $in_io_clk_period \
-                                           $master_io_clk_period]] 0]
+                                           $bsg_master_io_clk_period]] 0]
 
   puts "INFO\[BSG\]: Constraining clock crossing paths to $cdc_delay (ns)."
 
@@ -290,14 +266,13 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_core_clk_port \
   set sdi_C_input_ports [add_to_collection [get_ports "p_sdi_C_data_i*"] [get_ports "p_sdi_ncmd_i*[2]"]]
   set sdi_D_input_ports [add_to_collection [get_ports "p_sdi_D_data_i*"] [get_ports "p_sdi_ncmd_i*[3]"]]
 
-  # declare outputs globally
-  variable sdo_A_output_ports [add_to_collection [get_ports "p_sdo_A_data_o*"] [get_ports "p_sdo_ncmd_o[0]"]]
-  variable sdo_B_output_ports [add_to_collection [get_ports "p_sdo_B_data_o*"] [get_ports "p_sdo_ncmd_o[1]"]]
-  variable sdo_C_output_ports [add_to_collection [get_ports "p_sdo_C_data_o*"] [get_ports "p_sdo_ncmd_o[2]"]]
-  variable sdo_D_output_ports [add_to_collection [get_ports "p_sdo_D_data_o*"] [get_ports "p_sdo_ncmd_o[3]"]]
+  set sdo_A_output_ports [add_to_collection [get_ports "p_sdo_A_data_o*"] [get_ports "p_sdo_ncmd_o[0]"]]
+  set sdo_B_output_ports [add_to_collection [get_ports "p_sdo_B_data_o*"] [get_ports "p_sdo_ncmd_o[1]"]]
+  set sdo_C_output_ports [add_to_collection [get_ports "p_sdo_C_data_o*"] [get_ports "p_sdo_ncmd_o[2]"]]
+  set sdo_D_output_ports [add_to_collection [get_ports "p_sdo_D_data_o*"] [get_ports "p_sdo_ncmd_o[3]"]]
 
   # bound the delay on the reset signal to something reasonable
-  set_input_delay -clock $bsg_core_clk_name $max_async_reset_delay [get_ports p_reset_i]
+  set_input_delay -clock $bsg_core_clk_name $max_async_reset_delay $bsg_reset_port
 
   # TODO: token ports need special constraints.
 
@@ -457,10 +432,6 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_core_clk_port \
   # violations through savvy placement, compared to having to handle a large
   # number of violations.
 
-  # prioritizing path groups
-  # the overall cost function is sigmasum(negative_slack * weight) of all
-  # path groups.
-
   puts "INFO\[BSG\]: end bsg_chip_ucsd_bsg_332_timing_constraint function in script [info script]\n"
 
 }
@@ -470,6 +441,7 @@ proc bsg_chip_timing_constraint {args} {
   parse_proc_arguments -args $args pargs
 
   set bsg_package $pargs(-package)
+  set bsg_reset_port $pargs(-reset_port)
   set bsg_core_clk_port $pargs(-core_clk_port)
   set bsg_core_clk_name $pargs(-core_clk_name)
   set bsg_core_clk_period $pargs(-core_clk_period)
@@ -478,15 +450,22 @@ proc bsg_chip_timing_constraint {args} {
   set bsg_master_io_clk_period $pargs(-master_io_clk_period)
 
   if {$bsg_package != "ucsd_bsg_332" || $bsg_core_clk_period <= 0 || $bsg_master_io_clk_period <=0} {
+
     puts "ERROR\[BSG\]: Either you have the wrong package or one clock period is less or equal to zero"
+
     return
+
   } else {
-    bsg_chip_ucsd_bsg_332_timing_constraint $bsg_core_clk_port \
-                                            $bsg_core_clk_name \
-                                            $bsg_core_clk_period \
-                                            $bsg_master_io_clk_port \
-                                            $bsg_master_io_clk_name \
-                                            $bsg_master_io_clk_period
+
+    bsg_chip_ucsd_bsg_332_timing_constraint \
+                     $bsg_reset_port \
+                     $bsg_core_clk_port \
+                     $bsg_core_clk_name \
+                     $bsg_core_clk_period \
+                     $bsg_master_io_clk_port \
+                     $bsg_master_io_clk_name \
+                     $bsg_master_io_clk_period
+
   }
 
 }
@@ -495,6 +474,7 @@ define_proc_attributes bsg_chip_timing_constraint \
   -info "bsg_chip timing constraint" \
   -define_args {
   {-package  "bsg package used, i.e. ucsd_bsg_332" package string required}
+  {-reset_port "reset port, i.e \[get_ports p_reset_i\]" reset_port string required}
   {-core_clk_port "core clock port, i.e \[get_ports p_misc_L_i\[3\]\]" core_clk_port string required}
   {-core_clk_name "core clock name, i.e core_clk" core_clk_name string required}
   {-core_clk_period "core clock period in tech-time-unit, i.e 3.5" core_clk_period float required}
