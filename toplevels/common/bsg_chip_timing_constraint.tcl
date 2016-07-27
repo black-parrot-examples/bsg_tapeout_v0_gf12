@@ -59,7 +59,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
 
   # clock uncertainty
 
-  set clock_uncertainty_percent 0
+  set clock_uncertainty_percent 5
 
   set core_clk_uncertainty      [expr ($clock_uncertainty_percent * $bsg_core_clk_period) / 100.0]
   set out_io_clk_uncertainty    [expr ($clock_uncertainty_percent * $out_io_clk_period) / 100.0]
@@ -237,7 +237,8 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
     set_max_delay $cdc_delay -from $cdc_clk \
                              -to [remove_from_collection [get_clocks *_cdc] $cdc_clk]
 
-    set_min_delay 0 -from $cdc_clk [remove_from_collection [get_clocks *_cdc] $cdc_clk]
+    set_min_delay 0 -from $cdc_clk \
+                    -to [remove_from_collection [get_clocks *_cdc] $cdc_clk]
 
   }
 
@@ -406,6 +407,16 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
 
   }
 
+  set_max_delay $bsg_master_io_clk_period -from [get_clocks $bsg_master_io_clk_name] -to [get_ports p_sdo_sclk_o*]
+  set_min_delay 0 -from [get_clocks $bsg_master_io_clk_name] -to [get_ports p_sdo_sclk_o*]
+
+  set_max_delay $in_io_clk_period -from [get_clocks sdi_*_sclk] -to [get_ports p_sdi_token_o*]
+  set_min_delay 0 -from [get_clocks sdi_*_sclk] -to [get_ports p_sdi_token_o*]
+
+  # set driving cell and load
+  set_driving_cell -lib_cell [get_attribute [get_cells -h sdo_A_sclk_o] ref_name] [all_inputs]
+  set_load 15 [all_outputs]
+  
   # create path groups
   #
   # separating these paths can help improve optimization in each group independently.
