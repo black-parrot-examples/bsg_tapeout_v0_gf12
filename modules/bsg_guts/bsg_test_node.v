@@ -114,20 +114,16 @@ module  bsg_test_node
         // but this gets rid of an unused input warning
         assign out_fifo_v = en_i;  //1'b1;
 
-        assign out_fifo_data = '{srcid   :  master_id_p
-                                 ,destid :  slave_id_p
-                                 ,opcode :  ((state_r == 2'b01)
-                                             ? RNENABLE_CMD
-                                             : ((state_r == 2'b00)
-                                                ? RNRESET_DISABLE_CMD
-                                                : '0)
-                                             )
-                                 // start by sending switch command
-                                 ,cmd    :  ((state_r == 2'b10) ?  '0 : '1)
-                                 ,data   :  data_gen
-                                 , default: '0
-                                 };
+        assign out_fifo_data.srcid = master_id_p;
+        assign out_fifo_data.destid = slave_id_p;
 
+        // opcodes are valid only when cmd = 1, otherwise they are discarded
+        assign out_fifo_data.opcode = (state_r == 2'b00)?
+                                      RNRESET_DISABLE_CMD
+                                    : RNENABLE_CMD;
+
+        assign out_fifo_data.cmd = (state_r == 2'b10)? '0 : '1;
+        assign out_fifo_data.data = data_gen;
 
         // receive data from slave node
 
