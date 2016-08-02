@@ -407,11 +407,18 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
 
   }
 
-  set_max_delay $bsg_master_io_clk_period -from [get_clocks $bsg_master_io_clk_name] -to [get_ports p_sdo_sclk_o*]
-  set_min_delay 0 -from [get_clocks $bsg_master_io_clk_name] -to [get_ports p_sdo_sclk_o*]
+  # ouput ports p_sdo_sclk_o and p_sdi_token_o will be reported as unconstrained endpoint
+  # if no constraints are set on these ports. these signals are input clocks of downstream
+  # devices. we want to set a max_delay on these ports, but it's hard to predict the delay
+  # from the driving clocks to the ports before cts. and it will cause violations if the
+  # value is set too small. actually we don't care too much about these delays. i think it
+  # could be acceptable if these ports are unconstrained
 
-  set_max_delay $in_io_clk_period -from [get_clocks sdi_*_sclk] -to [get_ports p_sdi_token_o*]
-  set_min_delay 0 -from [get_clocks sdi_*_sclk] -to [get_ports p_sdi_token_o*]
+  #set_max_delay $bsg_master_io_clk_period -from [get_clocks $bsg_master_io_clk_name] -to [get_ports p_sdo_sclk_o*]
+  #set_min_delay 0 -from [get_clocks $bsg_master_io_clk_name] -to [get_ports p_sdo_sclk_o*]
+
+  #set_max_delay $in_io_clk_period -from [get_clocks sdi_*_sclk] -to [get_ports p_sdi_token_o*]
+  #set_min_delay 0 -from [get_clocks sdi_*_sclk] -to [get_ports p_sdi_token_o*]
 
   # set driving cell and load
   set_driving_cell -lib_cell [get_attribute [get_cells -h sdo_A_sclk_o] ref_name] [all_inputs]
