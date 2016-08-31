@@ -1,12 +1,4 @@
 #-------------------------------------------------------------------------------
-# University of California, San Diego - Bespoke Systems Group
-#-------------------------------------------------------------------------------
-# File: bsg_chip_timing_constraint.tcl
-#
-# Authors: Michael Taylor
-#          Chun Zhao
-#          Luis Vega
-#
 # Usage example:
 #
 # source $::env(BSG_DESIGNS_DIR)/toplevels/common/bsg_chip_timing_constraint.tcl
