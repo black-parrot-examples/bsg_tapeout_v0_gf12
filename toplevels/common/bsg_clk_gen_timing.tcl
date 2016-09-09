@@ -23,8 +23,12 @@ proc bsg_clk_gen_clock_create { osc_path clk_name bsg_tag_clk_name clk_gen_perio
     set suffix "/clk_gen_osc_inst/fdt/ICLK/Y"
 
     # this is for the output of the oscillator, which goes to the downsampler
-    create_clock -period $clk_gen_period -name ${clk_name}_osc $osc_path$suffix
+    create_clock -period $clk_gen_period -name ${clk_name}_osc [get_pins ${osc_path}/clk_gen_osc_inst/clk_o]
     set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period) / 100.0] ${clk_name}_osc
+
+    # this is for the output of the oscillator, which goes to the osc's bt client
+    create_clock -period $clk_gen_period -name ${clk_name}_btc [get_pins ${osc_path}/clk_gen_osc_inst/fdt/buf_btc_o]
+    set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period) / 100.0] ${clk_name}_btc
 
     # these are generated clocks; we call them clocks to get preferred shielding and routing
     # nothing is actually timed with these
@@ -37,6 +41,6 @@ proc bsg_clk_gen_clock_create { osc_path clk_name bsg_tag_clk_name clk_gen_perio
     set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period) / 100.0] ${clk_name}
 
     # two clock domains being crossed into via bsg_tag
+    bsg_tag_add_client_cdc_timing_constraints $bsg_tag_clk_name ${clk_name}_btc
     bsg_tag_add_client_cdc_timing_constraints $bsg_tag_clk_name ${clk_name}_osc
-    bsg_tag_add_client_cdc_timing_constraints $bsg_tag_clk_name ${clk_name}_ds
 }
