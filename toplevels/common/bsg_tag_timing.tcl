@@ -9,9 +9,17 @@
 # bsg_tag connects to the two oscillators, and two ds's
 #
 
-proc bsg_tag_clock_create { bsg_tag_clk_name bsg_tag_port bsg_tag_period uncertainty_percent } {
+proc bsg_tag_clock_create { bsg_tag_clk_name bsg_tag_port bsg_tag_data bsg_tag_attach bsg_tag_period uncertainty_percent } {
     create_clock -period $bsg_tag_period -name $bsg_tag_clk_name $bsg_tag_port
     set_clock_uncertainty  [expr ($uncertainty_percent * $bsg_tag_period)    / 100.0] [get_clocks $bsg_tag_clk_name]
+
+    # we set the input delay to be half the bsg_tag clock period; we launch on the negative edge and clock and
+    # data travel in parallel, so should be about right
+
+    set_input_delay [expr $bsg_tag_period  / 2.0] -clock $bsg_tag_clk_name $bsg_tag_data
+
+    # this signal is relative to the bsg_tag_clk, but is used in the bsg_tag_client in a CDC kind of way
+    set_input_delay [expr $bsg_tag_period  / 2.0] -clock $bsg_tag_clk_name $bsg_tag_attach
 }
 
 #

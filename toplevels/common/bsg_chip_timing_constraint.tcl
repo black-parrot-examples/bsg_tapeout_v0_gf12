@@ -161,6 +161,9 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   #      going into token ctr, since this signal is supposed to be asserted
   #      for many cycles before and after the strobe of the token clock.
   #      nonetheless, we restrict the timing of this path.
+  #
+  # namespace: we have added BSG_CHIP as a prefix to _cdc to prevent
+  # accidental conflicts between scripts
   #----------------------------------------------------------------------------
 
   set cdc_delay [lindex [lsort -real [list $bsg_core_clk_period \
@@ -170,67 +173,67 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
 
   puts "INFO\[BSG\]: Constraining clock crossing paths to $cdc_delay (ns)."
 
-  create_clock -name core_clk_cdc \
+  create_clock -name core_clk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks $bsg_core_clk_name] period] \
                -add $bsg_core_clk_port
 
-  create_clock -name master_io_clk_cdc \
+  create_clock -name master_io_clk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks $bsg_master_io_clk_name] period] \
                -add $bsg_master_io_clk_port
 
-  create_clock -name sdi_A_sclk_cdc \
+  create_clock -name sdi_A_sclk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks sdi_A_sclk] period] \
                -add $sdi_A_sclk_port
 
-  create_clock -name sdi_B_sclk_cdc \
+  create_clock -name sdi_B_sclk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks sdi_B_sclk] period] \
                -add $sdi_B_sclk_port
 
-  create_clock -name sdi_C_sclk_cdc \
+  create_clock -name sdi_C_sclk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks sdi_C_sclk] period] \
                -add $sdi_C_sclk_port
 
-  create_clock -name sdi_D_sclk_cdc \
+  create_clock -name sdi_D_sclk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks sdi_D_sclk] period] \
                -add $sdi_D_sclk_port
 
-  create_clock -name sdo_A_token_clk_cdc \
+  create_clock -name sdo_A_token_clk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks sdo_A_token_clk] period] \
                -add $sdo_A_token_clk_port
 
-  create_clock -name sdo_B_token_clk_cdc \
+  create_clock -name sdo_B_token_clk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks sdo_B_token_clk] period] \
                -add $sdo_B_token_clk_port
 
-  create_clock -name sdo_C_token_clk_cdc \
+  create_clock -name sdo_C_token_clk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks sdo_C_token_clk] period] \
                -add $sdo_C_token_clk_port
 
-  create_clock -name sdo_D_token_clk_cdc \
+  create_clock -name sdo_D_token_clk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks sdo_D_token_clk] period] \
                -add $sdo_D_token_clk_port
 
   # these are redundant, I guess
-  remove_propagated_clock [get_clocks *_cdc]
+  remove_propagated_clock [get_clocks *_BSG_CHIP_cdc]
 
   # remove all internal paths from concern; these should already be timed
-  foreach_in_collection cdc_clk [get_clocks *_cdc] {
+  foreach_in_collection cdc_clk [get_clocks *_BSG_CHIP_cdc] {
     set_false_path -from [get_clock $cdc_clk] -to [get_clock $cdc_clk]
   }
 
   # make cdc clocks physically exclusive from all others
   set_clock_groups -physically_exclusive \
-                   -group [remove_from_collection [get_clocks *] [get_clocks *_cdc]] \
-                   -group [get_clocks *_cdc]
+                   -group [remove_from_collection [get_clocks *] [get_clocks *_BSG_CHIP_cdc]] \
+                   -group [get_clocks *_BSG_CHIP_cdc]
 
   # impose a delay of one cycle delay for paths from sdi clocks to core
-  foreach_in_collection cdc_clk [get_clocks *_cdc] {
+  foreach_in_collection cdc_clk [get_clocks *_BSG_CHIP_cdc] {
 
     set_max_delay $cdc_delay -from $cdc_clk \
-                             -to [remove_from_collection [get_clocks *_cdc] $cdc_clk]
+                             -to [remove_from_collection [get_clocks *_BSG_CHIP_cdc] $cdc_clk]
 
     set_min_delay 0 -from $cdc_clk \
-                    -to [remove_from_collection [get_clocks *_cdc] $cdc_clk]
+                    -to [remove_from_collection [get_clocks *_BSG_CHIP_cdc] $cdc_clk]
 
   }
 
