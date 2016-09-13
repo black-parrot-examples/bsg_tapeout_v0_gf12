@@ -8,12 +8,17 @@
 #
 # bsg_tag connects to the two oscillators, and two ds's
 #
+# note: if the bsg_tag clock is 10 ns, then 5 percent uncertainty is 0.5 ns, which
+# is a lot of uncertainty and will result in many extraneous gates being added to satisfy
+# hold times, and this creates havoc on CDCs etc.
+#
 
 proc bsg_tag_clock_create { bsg_tag_clk_name bsg_tag_port bsg_tag_data bsg_tag_attach bsg_tag_period uncertainty_percent } {
+    # this is the scan chain
     create_clock -period $bsg_tag_period -name $bsg_tag_clk_name $bsg_tag_port
     set_clock_uncertainty  [expr ($uncertainty_percent * $bsg_tag_period)    / 100.0] [get_clocks $bsg_tag_clk_name]
 
-    # we set the input delay to be half the bsg_tag clock period; we launch on the negative edge and clock and
+    # we set the input delay of these pins to be half the bsg_tag clock period; we launch on the negative edge and clock and
     # data travel in parallel, so should be about right
 
     set_input_delay [expr $bsg_tag_period  / 2.0] -clock $bsg_tag_clk_name $bsg_tag_data
@@ -42,8 +47,11 @@ proc bsg_tag_add_client_cdc_timing_constraints { bsg_tag_clk_name other_clk_name
     set bsg_tag_period  [get_attribute [get_clocks $bsg_tag_clk_name] period]
     set other_period [get_attribute [get_clocks $other_clk_name] period]
 
-    # CDC delay should be less than fastest cycle time
-    set bsg_tag_cdc_delay [lindex [lsort -real [list $bsg_tag_period $other_period]] 0]
+    # CDC delay corresponds to skew between bits in the sender. we need to make sure
+    # that the skew is not greater than the cycle time; but an easier way to ensure
+    # this is to just ensure that it takes less than one sender clock cycle
+    # conservatively, we set it to one half of the sender cycle time
+    set bsg_tag_cdc_delay [expr $bsg_tag_period / 2.0]
 
     # create bsg_tag cdc clock if it is not already created
     if {[sizeof_collection [get_clocks $bsg_tag_clk_name_cdc]]==0} {
@@ -68,12 +76,20 @@ proc bsg_tag_add_client_cdc_timing_constraints { bsg_tag_clk_name other_clk_name
         -group [remove_from_collection [get_clocks *] [list $bsg_tag_clk_name_cdc $other_clk_name_cdc ]]\
         -group [list $bsg_tag_clk_name_cdc $other_clk_name_cdc ]
 
-    # add delays to CDC clocks
-    set_max_delay $bsg_tag_cdc_delay -from $bsg_tag_clk_name_cdc -to $other_clk_name_cdc
-    set_min_delay 0 -from $bsg_tag_clk_name_cdc -to $other_clk_name_cdc
+    # ensure bounded skew between bits that cross over the CDC.
+    # as long as the skew is less than the lesser of the two cycle times, then we will see at
+    # most two consecutive gray-coded values in a FIFO transfer (i.e. 1 bit flip)
+    # however in tsmc 250, we have the awkward occurence that CLK->Q of the output flop is
+    # less than the hold time of the receive flop, resulting in an apparent violation of hold time.
+    # the tool then inserts delay buffers between the flops unnecessarily.
+    # since these two flops are asynchronous, this is not a real hold time issue, so we fix it
+    # by shifting our windows back 5%, still guaranteeing the same 1-cycle maximum on delay
 
-    set_max_delay $bsg_tag_cdc_delay -from $other_clk_name_cdc -to $bsg_tag_clk_name_cdc
-    set_min_delay 0 -from $other_clk_name_cdc -to $bsg_tag_clk_name_cdc
+    set_max_delay [expr $bsg_tag_cdc_delay * 0.95] -from $bsg_tag_clk_name_cdc -to $other_clk_name_cdc
+    set_max_delay [expr $bsg_tag_cdc_delay * 0.95] -from $other_clk_name_cdc -to $bsg_tag_clk_name_cdc
+
+    set_min_delay [expr $bsg_tag_cdc_delay * -0.05] -from $bsg_tag_clk_name_cdc -to $other_clk_name_cdc
+    set_min_delay [expr $bsg_tag_cdc_delay * -0.05] -from $other_clk_name_cdc   -to $bsg_tag_clk_name_cdc
 }
 
 
