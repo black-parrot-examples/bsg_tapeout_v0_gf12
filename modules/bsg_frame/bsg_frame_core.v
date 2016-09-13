@@ -1,9 +1,12 @@
 `include "bsg_comm_link.vh"
 
-module bsg_frame_core #(parameter num_channels_p=4
-                        ,parameter channel_width_p=8
-                        ,parameter gateway_p=0
+module bsg_frame_core #(
+                        parameter gateway_p=0
                         ,parameter nodes_p=1
+
+			// generally will not be changing these parameters
+			,parameter num_channels_p=4
+                        ,parameter channel_width_p=8
                         ,parameter uniqueness_p=0
 
                         ,parameter bsg_comm_link_i_s_width_lp = `bsg_comm_link_channel_in_s_width(channel_width_p)
@@ -22,7 +25,7 @@ module bsg_frame_core #(parameter num_channels_p=4
     , output reg im_slave_reset_tline_r_o
 
     // post-calibration reset signal synchronous to the core clock
-    , output core_reset_o
+    , output core_calib_reset_r_o
     );
 
    localparam ring_bytes_lp    = 10;

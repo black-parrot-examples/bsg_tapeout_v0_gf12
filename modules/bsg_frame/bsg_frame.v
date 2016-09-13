@@ -9,8 +9,8 @@
 
 `include "bsg_iopad_macros.v"
 
-
-module bsg_frame
+module bsg_frame #(parameter gateway_p="inv"   // 0 or 1
+                   ,parameter nodes_p="inv")   // 1 to N
 
 // **************************************************************
 // *
@@ -22,7 +22,7 @@ module bsg_frame
 
 // ***********************************
 // *
-// * pack bsg_comm_link into structs
+// * pack bsg_comm_link into structs; swizzle
 // *
 // *
 
@@ -31,37 +31,41 @@ module bsg_frame
 `declare_bsg_comm_link_channel_in_s (8);
 `declare_bsg_comm_link_channel_out_s(8);
 
+`define SWIZZLE_3120(a) { a[3], a[1], a[2], a[0] }
+
    bsg_comm_link_channel_in_s  [3:0] ch_li;
    bsg_comm_link_channel_out_s [3:0] ch_lo;
 
-`define BSG_SWIZZLE_3120(a) { a[3],a[1],a[2],a[0] }
-`define BSG_NO_SWIZZLE_3210(name,field) { name[3].field, name[2].field, name[1].field, name[0].field }
+   bsg_comm_link_group #(.num_channels_p(4), ,.channel_width_p(8)) bclg
+     (.co_i(ch_lo)
+      ,.ci_o(ch_li)
 
-   // swizzle input channels for physical design reasons; swapping B and C channels
-   assign `BSG_NO_SWIZZLE_3210(ch_li,io_clk_tline)   = `BSG_SWIZZLE_3120(sdi_sclk_i_int);
-   assign `BSG_NO_SWIZZLE_3210(ch_li,io_valid_tline) = `BSG_SWIZZLE_3120(sdi_ncmd_i_int);
-   assign `BSG_NO_SWIZZLE_3210(ch_li,io_data_tline)  = { sdi_D_data_i_int, sdi_B_data_i_int, sdi_C_data_i_int, sdi_A_data_i_int };
-   assign `BSG_SWIZZLE_3120(sdi_token_o_int)         = `BSG_NO_SWIZZLE_3210(ch_lo,io_token_clk_tline);
+      // we reverse input channels 1 and 2 for physical design
+      ,.sdi_sclk_i (`SWIZZLE_3120(sdi_sclk_i_int ))
+      ,.sdi_ncmd_i (`SWIZZLE_3120(sdi_ncmd_i_int ))
+      ,.sdi_data_i({sdi_D_data_i_int, sdi_B_data_i_int, sdi_C_data_i_int, sdi_A_data_i_int})
 
-   // no swizzle of output channels
-   genvar i;
+      ,.sdi_token_o(`SWIZZLE_3120(sdi_token_o_int))
 
-   for (i = 0; i < 4; i=i+1)
-     begin: rof
-        assign sdo_ncmd_o_int [i]                 = ch_lo[i].im_valid_tline;
-        assign sdo_clk_o_int  [i]                 = ch_lo[i].im_clk_tline;
-        assign ch_li          [i].token_clk_tline = sdo_token_i_int[i];
-     end
+      // no reversal of output channels
+      ,.sdo_sclk_o (sdo_sclk_o_int )
+      ,.sdo_ncmd_o (sdo_ncmd_o_int )
+      ,.sdo_data_o({sdi_D_data_i_int, sdi_C_data_i_int, sdi_B_data_i_int, sdi_A_data_i_int})
+      ,.sdo_token_i(sdo_token_o_int)
+      );
 
-   assign {sdi_D_data_o_int, sdi_C_data_o_int, sdi_B_data_o_int, sdi_A_data_o_int } = `BSG_NO_SWIZZLE_3210(ch_lo,im_data_tline);
+   // ***********************************
+   // *
+   // * instantiate body of chip
+   // *
+   // *
 
-// ***********************************
-// *
-// * instantiate body of chip
-// *
-// *
+   logic im_slave_reset_tline_r_lo;
+   logic core_calib_reset_r_lo;
 
    bsg_frame_core      #(.uniqueness_p(1)
+                         ,.gateway_p(gateway_p)
+                         ,.nodes_p  (nodes_p  )
                         ) bcc
      (.core_clk_i            (misc_L_i_int[3])
       ,.async_reset_i        (reset_i_int    )
@@ -70,8 +74,15 @@ module bsg_frame
       ,.bsg_comm_link_i      (ch_li)
       ,.bsg_comm_link_o      (ch_lo)
 
-      ,.im_slave_reset_tline_r_o()             // unused by ASIC
-      ,.core_reset_o            ()             // post calibration reset
+      // unused by ASIC, but used by Gateway (goes to reset of ASIC)
+      ,.im_slave_reset_tline_r_o()
+      ,.core_calib_reset_r_o    (core_calib_reset_r_lo    ) // post calibration reset; unused; could be useful to have as output pin
       );
 
-`include "bsg_pinout_end.v"
+   // we borrow this pin:
+
+   // on an ASIC, this pin means that calibration has finished
+
+   assign sdo_tkn_ex_o_int = core_calib_reset_r_lo;
+
+endmodule

@@ -34,7 +34,7 @@ module bsg_frame_io #(parameter num_channels_p=4
     , output reg im_slave_reset_tline_r_o
 
     // post-calibration reset signal synchronous to the core clock
-    , output core_reset_o
+    , output core_calib_reset_r_o
     );
 
    // **************************************************************
@@ -60,6 +60,12 @@ module bsg_frame_io #(parameter num_channels_p=4
    logic [channel_width_p-1:0] io_data_tline_li [num_channels_p-1:0];
    logic [num_channels_p-1:0]  io_token_clk_tline_lo;
 
+   // out channel
+   logic [num_channels_p-1:0]  im_clk_tline_lo;
+   logic [num_channels_p-1:0]  im_valid_tline_lo;
+   logic [channel_width_p-1:0] im_data_tline_lo [num_channels_p-1:0];
+   logic [num_channels_p-1:0]  token_clk_tline_li;
+
    genvar i;
 
    // input channel conversion
@@ -71,12 +77,6 @@ module bsg_frame_io #(parameter num_channels_p=4
         assign bsg_comm_link_o_cast[i].io_token_clk_tline    = io_token_clk_tline_lo[i];
      end
 
-   // out channel
-   logic [num_channels_p-1:0]  im_clk_tline_lo;
-   logic [num_channels_p-1:0]  im_valid_tline_lo;
-
-   logic [channel_width_p-1:0] im_data_tline_lo [num_channels_p-1:0];
-   logic [num_channels_p-1:0]  token_clk_tline_li;
 
    // output channel conversion
    for (i = 0; i < num_channels_p; i=i+1)
@@ -196,7 +196,7 @@ module bsg_frame_io #(parameter num_channels_p=4
       , .im_slave_reset_tline_r_o (im_slave_reset_tline_r_o)
       , .token_clk_tline_i        (token_clk_tline_li      ) // clk
 
-      ,.core_calib_reset_r_o(core_reset_o)
+      ,.core_calib_reset_r_o(core_calib_reset_r_o)
 
       // don't use
       , .core_async_reset_danger_o()
