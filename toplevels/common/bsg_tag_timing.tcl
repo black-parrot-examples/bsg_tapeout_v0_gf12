@@ -77,19 +77,12 @@ proc bsg_tag_add_client_cdc_timing_constraints { bsg_tag_clk_name other_clk_name
         -group [list $bsg_tag_clk_name_cdc $other_clk_name_cdc ]
 
     # ensure bounded skew between bits that cross over the CDC.
-    # as long as the skew is less than the lesser of the two cycle times, then we will see at
-    # most two consecutive gray-coded values in a FIFO transfer (i.e. 1 bit flip)
-    # however in tsmc 250, we have the awkward occurence that CLK->Q of the output flop is
-    # less than the hold time of the receive flop, resulting in an apparent violation of hold time.
-    # the tool then inserts delay buffers between the flops unnecessarily.
-    # since these two flops are asynchronous, this is not a real hold time issue, so we fix it
-    # by shifting our windows back 5%, still guaranteeing the same 1-cycle maximum on delay
 
-    set_max_delay [expr $bsg_tag_cdc_delay * 0.95] -from $bsg_tag_clk_name_cdc -to $other_clk_name_cdc
-    set_max_delay [expr $bsg_tag_cdc_delay * 0.95] -from $other_clk_name_cdc -to $bsg_tag_clk_name_cdc
+    set_max_delay $bsg_tag_cdc_delay  -from $bsg_tag_clk_name_cdc -to $other_clk_name_cdc
+    set_max_delay $bsg_tag_cdc_delay  -from $other_clk_name_cdc -to $bsg_tag_clk_name_cdc
 
-    set_min_delay [expr $bsg_tag_cdc_delay * -0.05] -from $bsg_tag_clk_name_cdc -to $other_clk_name_cdc
-    set_min_delay [expr $bsg_tag_cdc_delay * -0.05] -from $other_clk_name_cdc   -to $bsg_tag_clk_name_cdc
+    set_min_delay 0 -from $bsg_tag_clk_name_cdc -to $other_clk_name_cdc
+    set_min_delay 0 -from $other_clk_name_cdc   -to $bsg_tag_clk_name_cdc
 }
 
 
