@@ -3,10 +3,10 @@ module bsg_guts #(parameter num_channels_p=4
                   ,parameter channel_width_p=8
                   ,parameter enabled_at_start_vec_p=0
                   ,parameter master_p=0
-                  ,parameter master_to_slave_speedup_p=100
+                  ,parameter master_to_client_speedup_p=100
                   ,parameter master_bypass_test_p=5'b00000
                   ,parameter nodes_p=1
-		  ,parameter uniqueness_p=0
+                  ,parameter uniqueness_p=0
                   )
    (
     input core_clk_i
@@ -59,25 +59,48 @@ module bsg_guts #(parameter num_channels_p=4
 
    for (i = 0; i < nodes_p; i=i+1)
      begin : n
-        bsg_test_node
-            #(.ring_width_p(ring_width_lp)
-              ,.master_p(master_p)
-              ,.master_id_p(i)
-              ,.slave_id_p(i)
-              ) ode
-            (.clk_i   (core_clk_i                )
-             ,.reset_i(core_node_reset_lo [i])
+        if (master_p)
+          begin: mstr
+             bsg_test_node_master
+               #(.ring_width_p(ring_width_lp)
+                 ,.master_id_p(i)
+                 ,.client_id_p(i)
+                 ) mstr
+                 (.clk_i   (core_clk_i                )
+                  ,.reset_i(core_node_reset_lo [i])
 
-             ,.v_i    (core_node_v_A      [i])
-             ,.data_i (core_node_data_A   [i])
-             ,.ready_o(core_node_ready_A  [i])
+                  ,.v_i    (core_node_v_A      [i])
+                  ,.data_i (core_node_data_A   [i])
+                  ,.ready_o(core_node_ready_A  [i])
 
-             ,.v_o    (core_node_v_B      [i])
-             ,.data_o (core_node_data_B   [i])
-             ,.yumi_i (core_node_yumi_B   [i])
+                  ,.v_o    (core_node_v_B      [i])
+                  ,.data_o (core_node_data_B   [i])
+                  ,.yumi_i (core_node_yumi_B   [i])
 
-             ,.en_i   (core_node_en_r_lo  [i])
-             );
+                  ,.en_i   (core_node_en_r_lo  [i])
+                  );
+          end
+        else
+          begin: clnt
+             bsg_test_node_client
+               #(.ring_width_p(ring_width_lp)
+                 ,.master_id_p(i)
+                 ,.client_id_p(i)
+                 ) clnt
+                 (.clk_i   (core_clk_i                )
+                  ,.reset_i(core_node_reset_lo [i])
+
+                  ,.v_i    (core_node_v_A      [i])
+                  ,.data_i (core_node_data_A   [i])
+                  ,.ready_o(core_node_ready_A  [i])
+
+                  ,.v_o    (core_node_v_B      [i])
+                  ,.data_o (core_node_data_B   [i])
+                  ,.yumi_i (core_node_yumi_B   [i])
+
+                  ,.en_i   (core_node_en_r_lo  [i])
+                  );
+          end
      end
 
    // should not need to modify
@@ -87,7 +110,7 @@ module bsg_guts #(parameter num_channels_p=4
                    , .link_channels_p (num_channels_p  )
                    , .nodes_p (nodes_p)
                    , .master_p(master_p)
-                   , .master_to_slave_speedup_p(master_to_slave_speedup_p)
+                   , .master_to_slave_speedup_p(master_to_client_speedup_p)
                    , .snoop_vec_p( { nodes_p { 1'b0 } })
                    // if master, enable at startup so that
                    // it can drive things

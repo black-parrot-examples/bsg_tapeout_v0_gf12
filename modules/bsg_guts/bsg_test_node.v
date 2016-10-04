@@ -6,7 +6,7 @@ module  bsg_test_node
   #(parameter ring_width_p="inv"
     , parameter master_p="inv"
     , parameter master_id_p="inv"
-    , parameter slave_id_p="inv"
+    , parameter client_id_p="inv"
     )
 
   (input clk_i
@@ -99,7 +99,7 @@ module  bsg_test_node
         // second step is to
         // enable it.
 
-        // send data to slave node
+        // send data to client node
         test_bsg_data_gen
           #(.channel_width_p(8)
             ,.num_channels_p(8)
@@ -115,7 +115,7 @@ module  bsg_test_node
         assign out_fifo_v = en_i;  //1'b1;
 
         assign out_fifo_data.srcid = master_id_p;
-        assign out_fifo_data.destid = slave_id_p;
+        assign out_fifo_data.destid = client_id_p;
 
         // opcodes are valid only when cmd = 1, otherwise they are discarded
         assign out_fifo_data.opcode = (state_r == 2'b00)?
@@ -125,7 +125,7 @@ module  bsg_test_node
         assign out_fifo_data.cmd = (state_r == 2'b10)? '0 : '1;
         assign out_fifo_data.data = data_gen;
 
-        // receive data from slave node
+        // receive data from client node
 
         wire [8*8-1:0] data_check;
 
@@ -154,7 +154,7 @@ module  bsg_test_node
      end
    else
      begin
-        // slave: a loopback device
+        // client: a loopback device
         always_comb
           begin
              // out_fifo_data        = in_fifo_data;
