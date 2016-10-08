@@ -27,6 +27,7 @@ module  bsg_test_node_client
 
    localparam debug_lp=1;
 
+   // synopsys translate_off
    if (debug_lp)
      begin
         always @(negedge clk_i)
@@ -37,6 +38,7 @@ module  bsg_test_node_client
           if (v_o & yumi_i)
             $display("## bsg_test_node_client sent %x",data_o);
      end
+   // synopsys translate_on
 
    // the default interface gives all design
    // control to the switch: you have to say
