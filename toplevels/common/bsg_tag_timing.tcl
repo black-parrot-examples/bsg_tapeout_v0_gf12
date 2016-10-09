@@ -55,7 +55,7 @@ proc bsg_tag_add_client_cdc_timing_constraints { bsg_tag_clk_name other_clk_name
 
     # create bsg_tag cdc clock if it is not already created
     if {[sizeof_collection [get_clocks $bsg_tag_clk_name_cdc]]==0} {
-        echo "Ignore above warning."
+        echo "BSG: Ignore above warning about not finding clock."
         create_clock -name $bsg_tag_clk_name_cdc \
             -period $bsg_tag_period \
             -add  [get_attribute $bsg_tag_clk_name sources]

@@ -20,7 +20,10 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
                                               bsg_core_clk_period \
                                               bsg_master_io_clk_port \
                                               bsg_master_io_clk_name \
-                                              bsg_master_io_clk_period} {
+                                              bsg_master_io_clk_period \
+                                              bsg_create_core_clk \
+                                              bsg_create_master_clk \
+                                              } {
 
   puts "INFO\[BSG\]: begin bsg_chip_ucsd_bsg_332_timing_constraint function in script [info script]\n"
 
@@ -102,13 +105,17 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   # creates a clock object and defines its waveform in the current design.
   # create_clock -period $CLK_PERIOD -name $CLK_NAME $CLK_PORT
 
-  create_clock -period $bsg_core_clk_period \
-               -name $bsg_core_clk_name \
-               $bsg_core_clk_port
+  if {$bsg_create_core_clk} {
+      create_clock -period $bsg_core_clk_period \
+          -name $bsg_core_clk_name \
+          $bsg_core_clk_port
+  }
 
-  create_clock -period $bsg_master_io_clk_period \
-               -name $bsg_master_io_clk_name \
-               $bsg_master_io_clk_port
+  if {$bsg_create_master_clk} {
+      create_clock -period $bsg_master_io_clk_period \
+          -name $bsg_master_io_clk_name \
+          $bsg_master_io_clk_port
+  }
 
   create_clock -period $in_io_clk_period -name sdi_A_sclk $sdi_A_sclk_port
   create_clock -period $in_io_clk_period -name sdi_B_sclk $sdi_B_sclk_port
@@ -418,7 +425,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   # set driving cell and load
   set_driving_cell -lib_cell [get_attribute [get_cells -h sdo_A_sclk_o] ref_name] [all_inputs]
   set_load 15 [all_outputs]
-  
+
   # create path groups
   #
   # separating these paths can help improve optimization in each group independently.
@@ -461,6 +468,8 @@ proc bsg_chip_timing_constraint {args} {
   set bsg_master_io_clk_port $pargs(-master_io_clk_port)
   set bsg_master_io_clk_name $pargs(-master_io_clk_name)
   set bsg_master_io_clk_period $pargs(-master_io_clk_period)
+  set bsg_create_core_clk $pargs(-create_core_clk)
+  set bsg_create_master_clk $pargs(-create_master_clk)
 
   if {$bsg_package != "ucsd_bsg_332" || $bsg_core_clk_period <= 0 || $bsg_master_io_clk_period <=0} {
 
@@ -477,7 +486,9 @@ proc bsg_chip_timing_constraint {args} {
                      $bsg_core_clk_period \
                      $bsg_master_io_clk_port \
                      $bsg_master_io_clk_name \
-                     $bsg_master_io_clk_period
+                     $bsg_master_io_clk_period \
+                     $bsg_create_core_clk \
+                     $bsg_create_master_clk
 
   }
 
@@ -486,12 +497,14 @@ proc bsg_chip_timing_constraint {args} {
 define_proc_attributes bsg_chip_timing_constraint \
   -info "bsg_chip timing constraint" \
   -define_args {
-  {-package  "bsg package used, i.e. ucsd_bsg_332" package string required}
-  {-reset_port "reset port, i.e \[get_ports p_reset_i\]" reset_port string required}
-  {-core_clk_port "core clock port, i.e \[get_ports p_misc_L_i\[3\]\]" core_clk_port string required}
-  {-core_clk_name "core clock name, i.e core_clk" core_clk_name string required}
-  {-core_clk_period "core clock period in tech-time-unit, i.e 3.5" core_clk_period float required}
-  {-master_io_clk_port "master io clock port, i.e. \[get_ports p_PLL_CLK_i\]" master_io_clk_port string required}
-  {-master_io_clk_name "master io clock name, i.e. master_io_clk" master_io_clk_name string required}
-  {-master_io_clk_period "master io clock period in tech-time-unit, i.e. 2.35" master_io_clk_period float required}
+      {-package  "bsg package used, i.e. ucsd_bsg_332" package string required}
+      {-reset_port "reset port, i.e \[get_ports p_reset_i\]" reset_port string required}
+      {-core_clk_port "core clock port, i.e \[get_ports p_misc_L_i\[3\]\]" core_clk_port string required}
+      {-core_clk_name "core clock name, i.e core_clk" core_clk_name string required}
+      {-core_clk_period "core clock period in tech-time-unit, i.e 3.5" core_clk_period float required}
+      {-master_io_clk_port "master io clock port, i.e. \[get_ports p_PLL_CLK_i\]" master_io_clk_port string required}
+      {-master_io_clk_name "master io clock name, i.e. master_io_clk" master_io_clk_name string required}
+      {-master_io_clk_period "master io clock period in tech-time-unit, i.e. 2.35" master_io_clk_period float required}
+      {-create_core_clk "0 if don't create" create_core_clk string required}
+      {-create_master_clk "0 if don't create" create_master_clk string required}
 }
