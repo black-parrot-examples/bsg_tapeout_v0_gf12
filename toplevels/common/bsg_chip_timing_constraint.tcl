@@ -23,6 +23,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
                                               bsg_master_io_clk_period \
                                               bsg_create_core_clk \
                                               bsg_create_master_clk \
+                                              bsg_input_cell_rise_fall_difference \
                                               } {
 
   puts "INFO\[BSG\]: begin bsg_chip_ucsd_bsg_332_timing_constraint function in script [info script]\n"
@@ -286,66 +287,69 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   # See p. 14 of this document:
   # http://www.zimmerdesignservices.com/working-with-ddrs-in-primetime.pdf
 
-  set_input_delay -clock sdi_A_sclk -min $max_in_io_skew_time $sdi_A_input_ports
-  set_input_delay -clock sdi_B_sclk -min $max_in_io_skew_time $sdi_B_input_ports
-  set_input_delay -clock sdi_C_sclk -min $max_in_io_skew_time $sdi_C_input_ports
-  set_input_delay -clock sdi_D_sclk -min $max_in_io_skew_time $sdi_D_input_ports
+  set min_input_delay [expr [expr $max_in_io_skew_time + $in_io_clk_uncertainty] + $bsg_input_cell_rise_fall_difference]
+  set max_input_delay [expr ($in_io_clk_period / 2) - $min_input_delay]
+
+  set_input_delay -clock sdi_A_sclk -min $min_input_delay $sdi_A_input_ports
+  set_input_delay -clock sdi_B_sclk -min $min_input_delay $sdi_B_input_ports
+  set_input_delay -clock sdi_C_sclk -min $min_input_delay $sdi_C_input_ports
+  set_input_delay -clock sdi_D_sclk -min $min_input_delay $sdi_D_input_ports
 
   set_input_delay -add_delay \
                   -clock_fall \
                   -clock sdi_A_sclk \
-                  -min $max_in_io_skew_time $sdi_A_input_ports
+                  -min $min_input_delay $sdi_A_input_ports
 
   set_input_delay -add_delay \
                   -clock_fall \
                   -clock sdi_B_sclk \
-                  -min $max_in_io_skew_time $sdi_B_input_ports
+                  -min $min_input_delay $sdi_B_input_ports
 
   set_input_delay -add_delay \
                   -clock_fall \
                   -clock sdi_C_sclk \
-                  -min $max_in_io_skew_time $sdi_C_input_ports
+                  -min $min_input_delay $sdi_C_input_ports
 
   set_input_delay -add_delay \
                   -clock_fall \
                   -clock sdi_D_sclk \
-                  -min $max_in_io_skew_time $sdi_D_input_ports
+                  -min $min_input_delay $sdi_D_input_ports
 
   set_input_delay -add_delay \
                   -clock sdi_A_sclk \
-                  -max [expr ($in_io_clk_period / 2) - $max_in_io_skew_time] $sdi_A_input_ports
+                  -max $max_input_delay $sdi_A_input_ports
 
   set_input_delay -add_delay \
                   -clock sdi_B_sclk \
-                  -max [expr ($in_io_clk_period / 2) - $max_in_io_skew_time] $sdi_B_input_ports
+                  -max $max_input_delay $sdi_B_input_ports
 
   set_input_delay -add_delay \
                   -clock sdi_C_sclk \
-                  -max [expr ($in_io_clk_period / 2) - $max_in_io_skew_time] $sdi_C_input_ports
+                  -max $max_input_delay $sdi_C_input_ports
 
   set_input_delay -add_delay \
                   -clock sdi_D_sclk \
-                  -max [expr ($in_io_clk_period / 2) - $max_in_io_skew_time] $sdi_D_input_ports
+                  -max $max_input_delay $sdi_D_input_ports
 
   set_input_delay -add_delay \
                   -clock_fall \
                   -clock sdi_A_sclk \
-                  -max [expr ($in_io_clk_period / 2) - $max_in_io_skew_time] $sdi_A_input_ports
+                  -max $max_input_delay $sdi_A_input_ports
 
   set_input_delay -add_delay \
                   -clock_fall \
                   -clock sdi_B_sclk \
-                  -max [expr ($in_io_clk_period / 2) - $max_in_io_skew_time] $sdi_B_input_ports
+                  -max $max_input_delay $sdi_B_input_ports
 
   set_input_delay -add_delay \
                   -clock_fall \
                   -clock sdi_C_sclk \
-                  -max [expr ($in_io_clk_period / 2) - $max_in_io_skew_time] $sdi_C_input_ports
+                  -max $max_input_delay $sdi_C_input_ports
 
   set_input_delay -add_delay \
                   -clock_fall \
                   -clock sdi_D_sclk \
-                  -max [expr ($in_io_clk_period / 2) - $max_in_io_skew_time] $sdi_D_input_ports
+                  -max $max_input_delay $sdi_D_input_ports
 
   report_clocks [get_clocks *]
 
@@ -470,6 +474,7 @@ proc bsg_chip_timing_constraint {args} {
   set bsg_master_io_clk_period $pargs(-master_io_clk_period)
   set bsg_create_core_clk $pargs(-create_core_clk)
   set bsg_create_master_clk $pargs(-create_master_clk)
+  set bsg_input_cell_rise_fall_difference $pargs(-input_cell_rise_fall_difference)
 
   if {$bsg_package != "ucsd_bsg_332" || $bsg_core_clk_period <= 0 || $bsg_master_io_clk_period <=0} {
 
@@ -488,7 +493,8 @@ proc bsg_chip_timing_constraint {args} {
                      $bsg_master_io_clk_name \
                      $bsg_master_io_clk_period \
                      $bsg_create_core_clk \
-                     $bsg_create_master_clk
+                     $bsg_create_master_clk \
+                     $bsg_input_cell_rise_fall_difference
 
   }
 
@@ -507,4 +513,5 @@ define_proc_attributes bsg_chip_timing_constraint \
       {-master_io_clk_period "master io clock period in tech-time-unit, i.e. 2.35" master_io_clk_period float required}
       {-create_core_clk "0 if don't create" create_core_clk string required}
       {-create_master_clk "0 if don't create" create_master_clk string required}
+      {-input_cell_rise_fall_difference "difference between rising and falling delay of input cell" input_cell_rise_fall_difference float required}
 }
