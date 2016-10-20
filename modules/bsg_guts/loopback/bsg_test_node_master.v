@@ -135,6 +135,7 @@ module  bsg_test_node_master
    test_bsg_data_gen
      #(.channel_width_p(8)
        ,.num_channels_p(8)
+       ,.debug_p(debug_lp)
        ) gen_in
        (.clk_i(clk_i)
         ,.reset_i(reset_i)
