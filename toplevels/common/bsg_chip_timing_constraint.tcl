@@ -24,6 +24,10 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
                                               bsg_create_core_clk \
                                               bsg_create_master_clk \
                                               bsg_input_cell_rise_fall_difference \
+                                              bsg_output_cell_rise_fall_difference_A \
+                                              bsg_output_cell_rise_fall_difference_B \
+                                              bsg_output_cell_rise_fall_difference_C \
+                                              bsg_output_cell_rise_fall_difference_D \
                                               } {
 
   puts "INFO\[BSG\]: begin bsg_chip_ucsd_bsg_332_timing_constraint function in script [info script]\n"
@@ -287,7 +291,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   # See p. 14 of this document:
   # http://www.zimmerdesignservices.com/working-with-ddrs-in-primetime.pdf
 
-  set min_input_delay [expr [expr $max_in_io_skew_time + $in_io_clk_uncertainty] + $bsg_input_cell_rise_fall_difference]
+  set min_input_delay [expr [expr $max_in_io_skew_time + $in_io_clk_uncertainty + $bsg_input_cell_rise_fall_difference/2]]
   set max_input_delay [expr ($in_io_clk_period / 2) - $min_input_delay]
 
   set_input_delay -clock sdi_A_sclk -min $min_input_delay $sdi_A_input_ports
@@ -353,19 +357,26 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
 
   report_clocks [get_clocks *]
 
+
   # set_multicycle_path is used according to the following synopsys document
   # called "Overcoming the Default Behavior of the set_data_check Command"
   # the document ID is 024664
+
+  # this article suggests that the set_data_check command does have a problem
+  # in that you cannot remove clock uncertainty unless the tool supports path-based
+  # uncertainties which synopsys does not seem to.
+  # http://www.analog-eetimes.com/content/modeling-skew-requirements-interfacing-protocol-signals-soc/page/0/4
+  # we nullify this problem by also subtracting the uncertainty from the data check.
 
   foreach_in_collection obj $sdo_A_output_ports {
 
     set_data_check -from [get_ports "p_sdo_sclk_o[0]"] \
                    -to $obj \
-                   -setup [expr (($out_io_clk_period/2) - $max_out_io_skew_time)]
+                   -setup [expr (($out_io_clk_period/2) - $max_out_io_skew_time - $master_io_clk_uncertainty - $bsg_output_cell_rise_fall_difference_A/2)]
 
     set_data_check -from [get_ports "p_sdo_sclk_o[0]"] \
                    -to $obj \
-                   -hold [expr (($out_io_clk_period/2) - $max_out_io_skew_time)]
+                   -hold [expr (($out_io_clk_period/2) - $max_out_io_skew_time  - $master_io_clk_uncertainty - $bsg_output_cell_rise_fall_difference_A/2)]
 
     set_multicycle_path -start 2 -to $obj
 
@@ -375,11 +386,11 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
 
     set_data_check -from [get_ports "p_sdo_sclk_o[1]"] \
                    -to $obj \
-                   -setup [expr (($out_io_clk_period/2) - $max_out_io_skew_time)]
+                   -setup [expr (($out_io_clk_period/2) - $max_out_io_skew_time - $master_io_clk_uncertainty  - $bsg_output_cell_rise_fall_difference_B/2)]
 
     set_data_check -from [get_ports "p_sdo_sclk_o[1]"] \
                    -to $obj \
-                   -hold  [expr (($out_io_clk_period/2) - $max_out_io_skew_time)]
+                   -hold  [expr (($out_io_clk_period/2) - $max_out_io_skew_time  - $master_io_clk_uncertainty  - $bsg_output_cell_rise_fall_difference_B/2)]
 
     set_multicycle_path -start 2 -to $obj
 
@@ -389,11 +400,11 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
 
     set_data_check -from [get_ports "p_sdo_sclk_o[2]"] \
                    -to $obj \
-                   -setup [expr (($out_io_clk_period/2) - $max_out_io_skew_time)]
+                   -setup [expr (($out_io_clk_period/2) - $max_out_io_skew_time - $master_io_clk_uncertainty - $bsg_output_cell_rise_fall_difference_C/2)]
 
     set_data_check -from [get_ports "p_sdo_sclk_o[2]"] \
                    -to $obj \
-                   -hold  [expr (($out_io_clk_period/2) - $max_out_io_skew_time)]
+                   -hold  [expr (($out_io_clk_period/2) - $max_out_io_skew_time  - $master_io_clk_uncertainty - $bsg_output_cell_rise_fall_difference_C/2)]
 
     set_multicycle_path -start 2 -to $obj
 
@@ -403,11 +414,11 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
 
     set_data_check -from [get_ports "p_sdo_sclk_o[3]"] \
                    -to $obj \
-                   -setup [expr (($out_io_clk_period/2) - $max_out_io_skew_time)]
+                   -setup [expr (($out_io_clk_period/2) - $max_out_io_skew_time - $master_io_clk_uncertainty  - $bsg_output_cell_rise_fall_difference_D/2)]
 
     set_data_check -from [get_ports "p_sdo_sclk_o[3]"] \
                    -to $obj \
-                   -hold  [expr (($out_io_clk_period/2) - $max_out_io_skew_time)]
+                   -hold  [expr (($out_io_clk_period/2) - $max_out_io_skew_time - $master_io_clk_uncertainty  - $bsg_output_cell_rise_fall_difference_D/2)]
 
     set_multicycle_path -start 2 -to $obj
 
@@ -475,6 +486,10 @@ proc bsg_chip_timing_constraint {args} {
   set bsg_create_core_clk $pargs(-create_core_clk)
   set bsg_create_master_clk $pargs(-create_master_clk)
   set bsg_input_cell_rise_fall_difference $pargs(-input_cell_rise_fall_difference)
+  set bsg_output_cell_rise_fall_difference_A $pargs(-output_cell_rise_fall_difference_A)
+  set bsg_output_cell_rise_fall_difference_B $pargs(-output_cell_rise_fall_difference_B)
+  set bsg_output_cell_rise_fall_difference_C $pargs(-output_cell_rise_fall_difference_C)
+  set bsg_output_cell_rise_fall_difference_D $pargs(-output_cell_rise_fall_difference_D)
 
   if {$bsg_package != "ucsd_bsg_332" || $bsg_core_clk_period <= 0 || $bsg_master_io_clk_period <=0} {
 
@@ -489,15 +504,17 @@ proc bsg_chip_timing_constraint {args} {
                      $bsg_core_clk_port \
                      $bsg_core_clk_name \
                      $bsg_core_clk_period \
-                     $bsg_master_io_clk_port \
-                     $bsg_master_io_clk_name \
+                     $bsg_master_io_clk_port   \
+                     $bsg_master_io_clk_name   \
                      $bsg_master_io_clk_period \
-                     $bsg_create_core_clk \
-                     $bsg_create_master_clk \
-                     $bsg_input_cell_rise_fall_difference
-
+                     $bsg_create_core_clk      \
+                     $bsg_create_master_clk    \
+                     $bsg_input_cell_rise_fall_difference    \
+                     $bsg_output_cell_rise_fall_difference_A \
+                     $bsg_output_cell_rise_fall_difference_B \
+                     $bsg_output_cell_rise_fall_difference_C \
+                     $bsg_output_cell_rise_fall_difference_D 
   }
-
 }
 
 define_proc_attributes bsg_chip_timing_constraint \
@@ -514,4 +531,8 @@ define_proc_attributes bsg_chip_timing_constraint \
       {-create_core_clk "0 if don't create" create_core_clk string required}
       {-create_master_clk "0 if don't create" create_master_clk string required}
       {-input_cell_rise_fall_difference "difference between rising and falling delay of input cell" input_cell_rise_fall_difference float required}
+      {-output_cell_rise_fall_difference_A "difference between rising and falling delay of output cell" output_cell_rise_fall_difference_A float required}
+      {-output_cell_rise_fall_difference_B "difference between rising and falling delay of output cell" output_cell_rise_fall_difference_B float required}
+      {-output_cell_rise_fall_difference_C "difference between rising and falling delay of output cell" output_cell_rise_fall_difference_C float required}
+      {-output_cell_rise_fall_difference_D "difference between rising and falling delay of output cell" output_cell_rise_fall_difference_D float required}
 }
