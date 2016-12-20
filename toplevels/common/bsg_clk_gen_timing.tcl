@@ -37,7 +37,7 @@ proc bsg_clk_gen_clock_create { osc_path clk_name bsg_tag_clk_name clk_gen_perio
     set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_int) / 100.0] ${clk_name}_ds
 
     # the output of the mux is the externally visible bonafide clock
-    create_clock -period $clk_gen_period_ext    -name ${clk_name}  [get_pins ${osc_path}/clk_o]
+    create_clock -period $clk_gen_period_ext    -name ${clk_name}  [get_pins ${osc_path}/mux_inst/macro.b1_i/stack_b0/Y]
     set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_ext) / 100.0] ${clk_name}
 
     # two clock domains being crossed into via bsg_tag
