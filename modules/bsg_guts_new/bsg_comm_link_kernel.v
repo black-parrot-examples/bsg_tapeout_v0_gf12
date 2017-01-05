@@ -506,7 +506,8 @@ module bsg_comm_link_kernel #
 
   assign token_reset_lo = im_channel_reset_lo;
 
-  for (i=0; i < link_channels_p; i=i+1) begin: comm
+  // backend placement scripts looking for "ch" block
+  for (i=0; i < link_channels_p; i=i+1) begin: ch
 
     bsg_launch_sync_sync #
       (.width_p(1))
@@ -617,7 +618,7 @@ module bsg_comm_link_kernel #
                    (core_sso_ready_lo[i] & core_ssi_valid_lo[i])
                    :core_yumi_i[i]));
 
-  end // block: comm
+  end // block: ch
 
   // core out
 
