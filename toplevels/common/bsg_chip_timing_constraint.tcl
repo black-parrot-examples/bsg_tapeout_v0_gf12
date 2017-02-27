@@ -18,10 +18,14 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
                                               bsg_core_clk_port \
                                               bsg_core_clk_name \
                                               bsg_core_clk_period \
+                                              bsg_manycore_clk_port \
+                                              bsg_manycore_clk_name \
+                                              bsg_manycore_clk_period \
                                               bsg_master_io_clk_port \
                                               bsg_master_io_clk_name \
                                               bsg_master_io_clk_period \
                                               bsg_create_core_clk \
+                                              bsg_create_manycore_clk \
                                               bsg_create_master_clk \
                                               bsg_input_cell_rise_fall_difference \
                                               bsg_output_cell_rise_fall_difference_A \
@@ -62,6 +66,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   set clock_uncertainty_percent 5
 
   set core_clk_uncertainty      [expr ($clock_uncertainty_percent * $bsg_core_clk_period) / 100.0]
+  set manycore_clk_uncertainty      [expr ($clock_uncertainty_percent * $bsg_manycore_clk_period) / 100.0]
   set out_io_clk_uncertainty    [expr ($clock_uncertainty_percent * $out_io_clk_period) / 100.0]
   set in_io_clk_uncertainty     [expr ($clock_uncertainty_percent * $in_io_clk_period) / 100.0]
   set token_clk_uncertainty     [expr ($clock_uncertainty_percent * $in_token_clk_period) / 100.0]
@@ -93,6 +98,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   puts "Parameter                             Value"
   puts "-----------------------               -------------------"
   puts "Core main clock period                $bsg_core_clk_period ns"
+  puts "Manycore main clock period            $bsg_manycore_clk_period ns"
   puts "Out IO clock period                   $out_io_clk_period ns"
   puts "In IO clock period                    $in_io_clk_period ns"
   puts "Max allowed on-chip in  IO skew (%)   $max_in_io_skew_percent %"
@@ -100,6 +106,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   puts "Max allowed on-chip out IO skew (%)   $max_out_io_skew_percent %"
   puts "Max allowed on-chip out IO skew       $max_out_io_skew_time ns"
   puts "Core main clock uncertainty           $core_clk_uncertainty ns"
+  puts "manycore main clock uncertainty       $core_clk_uncertainty ns"
   puts "Out IO clock uncertainty              $out_io_clk_uncertainty ns"
   puts "In  IO clock uncertainty              $in_io_clk_uncertainty ns"
   puts "-----------------------               -------------------\n"
@@ -114,6 +121,12 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
       create_clock -period $bsg_core_clk_period \
           -name $bsg_core_clk_name \
           $bsg_core_clk_port
+  }
+
+  if {$bsg_create_manycore_clk} {
+      create_clock -period $bsg_manycore_clk_period \
+          -name $bsg_manycore_clk_name \
+          $bsg_manycore_clk_port
   }
 
   if {$bsg_create_master_clk} {
@@ -138,6 +151,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   # so you really need to be sure this is what you want!
   set_clock_groups -asynchronous  \
     -group $bsg_core_clk_name \
+    -group $bsg_manycore_clk_name \
     -group $bsg_master_io_clk_name \
     -group {sdi_A_sclk} \
     -group {sdi_B_sclk} \
@@ -179,6 +193,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   #----------------------------------------------------------------------------
 
   set cdc_delay [lindex [lsort -real [list $bsg_core_clk_period \
+                                           $bsg_manycore_clk_period \
                                            $in_token_clk_period \
                                            $in_io_clk_period \
                                            $bsg_master_io_clk_period]] 0]
@@ -188,6 +203,10 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   create_clock -name core_clk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks $bsg_core_clk_name] period] \
                -add $bsg_core_clk_port
+
+  create_clock -name manycore_clk_BSG_CHIP_cdc \
+               -period [get_attribute [get_clocks $bsg_manycore_clk_name] period] \
+               -add $bsg_manycore_clk_port
 
   create_clock -name master_io_clk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks $bsg_master_io_clk_name] period] \
@@ -252,6 +271,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   # clock uncertainty
 
   set_clock_uncertainty $core_clk_uncertainty [get_clocks $bsg_core_clk_name]
+  set_clock_uncertainty $manycore_clk_uncertainty [get_clocks $bsg_manycore_clk_name]
   set_clock_uncertainty $master_io_clk_uncertainty [get_clocks $bsg_master_io_clk_name]
 
   set_clock_uncertainty $in_io_clk_uncertainty [get_clocks sdi_A_sclk]
@@ -480,10 +500,14 @@ proc bsg_chip_timing_constraint {args} {
   set bsg_core_clk_port $pargs(-core_clk_port)
   set bsg_core_clk_name $pargs(-core_clk_name)
   set bsg_core_clk_period $pargs(-core_clk_period)
+  set bsg_manycore_clk_port $pargs(-manycore_clk_port)
+  set bsg_manycore_clk_name $pargs(-manycore_clk_name)
+  set bsg_manycore_clk_period $pargs(-manycore_clk_period)
   set bsg_master_io_clk_port $pargs(-master_io_clk_port)
   set bsg_master_io_clk_name $pargs(-master_io_clk_name)
   set bsg_master_io_clk_period $pargs(-master_io_clk_period)
   set bsg_create_core_clk $pargs(-create_core_clk)
+  set bsg_create_manycore_clk $pargs(-create_manycore_clk)
   set bsg_create_master_clk $pargs(-create_master_clk)
   set bsg_input_cell_rise_fall_difference $pargs(-input_cell_rise_fall_difference)
   set bsg_output_cell_rise_fall_difference_A $pargs(-output_cell_rise_fall_difference_A)
@@ -504,10 +528,14 @@ proc bsg_chip_timing_constraint {args} {
                      $bsg_core_clk_port \
                      $bsg_core_clk_name \
                      $bsg_core_clk_period \
+                     $bsg_manycore_clk_port \
+                     $bsg_manycore_clk_name \
+                     $bsg_manycore_clk_period \
                      $bsg_master_io_clk_port   \
                      $bsg_master_io_clk_name   \
                      $bsg_master_io_clk_period \
                      $bsg_create_core_clk      \
+                     $bsg_create_manycore_clk      \
                      $bsg_create_master_clk    \
                      $bsg_input_cell_rise_fall_difference    \
                      $bsg_output_cell_rise_fall_difference_A \
@@ -525,10 +553,14 @@ define_proc_attributes bsg_chip_timing_constraint \
       {-core_clk_port "core clock port, i.e \[get_ports p_misc_L_i\[3\]\]" core_clk_port string required}
       {-core_clk_name "core clock name, i.e core_clk" core_clk_name string required}
       {-core_clk_period "core clock period in tech-time-unit, i.e 3.5" core_clk_period float required}
+      {-manycore_clk_port "manycore clock port, i.e \[get_ports p_misc_L_i\[5\]\]" manycore_clk_port string required}
+      {-manycore_clk_name "manycore clock name, i.e core_clk" manycore_clk_name string required}
+      {-manycore_clk_period "core clock period in tech-time-unit, i.e 3.5" manycore_clk_period float required}
       {-master_io_clk_port "master io clock port, i.e. \[get_ports p_PLL_CLK_i\]" master_io_clk_port string required}
       {-master_io_clk_name "master io clock name, i.e. master_io_clk" master_io_clk_name string required}
       {-master_io_clk_period "master io clock period in tech-time-unit, i.e. 2.35" master_io_clk_period float required}
       {-create_core_clk "0 if don't create" create_core_clk string required}
+      {-create_manycore_clk "0 if don't create" create_manycore_clk string required}
       {-create_master_clk "0 if don't create" create_master_clk string required}
       {-input_cell_rise_fall_difference "difference between rising and falling delay of input cell" input_cell_rise_fall_difference float required}
       {-output_cell_rise_fall_difference_A "difference between rising and falling delay of output cell" output_cell_rise_fall_difference_A float required}
