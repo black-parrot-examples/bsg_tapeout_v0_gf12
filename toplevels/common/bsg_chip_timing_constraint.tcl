@@ -303,7 +303,7 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   set_clock_uncertainty $token_clk_uncertainty [get_clocks sdo_C_token_clk]
   set_clock_uncertainty $token_clk_uncertainty [get_clocks sdo_D_token_clk]
 
-  if { $bsg_create_core_clk } {
+  if { $bsg_create_manycore_clk } {
     set_clock_uncertainty $manycore_clk_uncertainty [get_clocks $bsg_manycore_clk_name]
   }
 
