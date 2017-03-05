@@ -67,13 +67,6 @@ module  bsg_test_node_master
       ,.data_o(rom_data_lo)
       );
 
-   always @(negedge clk_i)
-     if ((reset_i===0) & done_lo)
-       begin
-          $display("## trace replay finished (%m); exiting");
-          $finish;
-       end
-
    assign done_o = done_lo;
 
 endmodule
