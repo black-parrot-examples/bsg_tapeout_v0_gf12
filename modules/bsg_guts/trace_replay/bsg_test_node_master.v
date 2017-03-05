@@ -12,6 +12,7 @@ module  bsg_test_node_master
 
    // control
    , input en_i
+   , output done_o
 
    // input channel
    , input  v_i
@@ -72,6 +73,8 @@ module  bsg_test_node_master
           $display("## trace replay finished (%m); exiting");
           $finish;
        end
+
+   assign done_o = done_lo;
 
 endmodule
 
