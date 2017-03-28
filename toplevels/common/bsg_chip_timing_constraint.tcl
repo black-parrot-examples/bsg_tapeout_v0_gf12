@@ -421,7 +421,8 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
                    -to $obj \
                    -hold [expr (($out_io_clk_period/2) - $max_out_io_skew_time  - $master_io_clk_uncertainty - $bsg_output_cell_rise_fall_difference_A/2)]
 
-    set_multicycle_path -start 2 -to $obj
+    set_multicycle_path -end   -setup 1 -to $obj
+    set_multicycle_path -start -hold  0 -to $obj
 
   }
 
@@ -435,7 +436,8 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
                    -to $obj \
                    -hold  [expr (($out_io_clk_period/2) - $max_out_io_skew_time  - $master_io_clk_uncertainty  - $bsg_output_cell_rise_fall_difference_B/2)]
 
-    set_multicycle_path -start 2 -to $obj
+    set_multicycle_path -end   -setup 1 -to $obj
+    set_multicycle_path -start -hold  0 -to $obj
 
   }
 
@@ -449,7 +451,8 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
                    -to $obj \
                    -hold  [expr (($out_io_clk_period/2) - $max_out_io_skew_time  - $master_io_clk_uncertainty - $bsg_output_cell_rise_fall_difference_C/2)]
 
-    set_multicycle_path -start 2 -to $obj
+    set_multicycle_path -end   -setup 1 -to $obj
+    set_multicycle_path -start -hold  0 -to $obj
 
   }
 
@@ -463,7 +466,8 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
                    -to $obj \
                    -hold  [expr (($out_io_clk_period/2) - $max_out_io_skew_time - $master_io_clk_uncertainty  - $bsg_output_cell_rise_fall_difference_D/2)]
 
-    set_multicycle_path -start 2 -to $obj
+    set_multicycle_path -end   -setup 1 -to $obj
+    set_multicycle_path -start -hold  0 -to $obj
 
   }
 
