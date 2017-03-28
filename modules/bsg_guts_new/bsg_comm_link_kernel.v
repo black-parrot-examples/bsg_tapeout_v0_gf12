@@ -254,12 +254,14 @@ module bsg_comm_link_kernel #
 
   logic [link_channels_p-1:0] im_channel_active;
 
+  // synopsys synthesis_off
   always @(negedge io_master_clk_i)
-    if (im_calib_done_lo == 1'b1 && im_calib_done_r == 1'b0)
+    if (im_calib_done_lo === 1'b1 && im_calib_done_r === 1'b0)
       $display("### %s calibration COMPLETED with active channels: (%b)"
               ,master_p ? "Master" : "Slave"
               ,im_channel_active);
-
+  // synopsys synthesis_on
+   
   // common signals for master and slave blocks
 
   genvar i,j;
@@ -307,7 +309,8 @@ module bsg_comm_link_kernel #
       im_start_calibration_r <= im_start_calibration_n;
 
     // counter intuitive; organized by tests then by channel
-    logic [link_channels_p-1:0] im_test_scoreboard [number_tests_lp+1-1:0];
+   logic [number_tests_lp+1-1:0][link_channels_p-1:0] im_test_scoreboard;
+
 
     // + 1; for the "final test"
     logic [$clog2(number_tests_lp+1)-1:0] im_test_index;
