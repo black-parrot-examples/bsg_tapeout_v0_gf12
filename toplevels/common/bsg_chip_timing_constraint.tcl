@@ -158,22 +158,32 @@ proc bsg_chip_ucsd_bsg_332_timing_constraint {bsg_reset_port \
   # note this disables all timing checks between groups
   # so you really need to be sure this is what you want!
 
-  set_clock_groups -asynchronous  \
-    -group $bsg_core_clk_name \
-    -group $bsg_master_io_clk_name \
-    -group {sdi_A_sclk} \
-    -group {sdi_B_sclk} \
-    -group {sdi_C_sclk} \
-    -group {sdi_D_sclk} \
-    -group {sdo_A_token_clk} \
-    -group {sdo_B_token_clk} \
-    -group {sdo_C_token_clk} \
-    -group {sdo_D_token_clk}
-
   if { $bsg_create_manycore_clk } {
     set_clock_groups -asynchronous  \
-        -group $bsg_manycore_clk_name
-  }
+      -group $bsg_core_clk_name \
+      -group $bsg_master_io_clk_name \
+      -group $bsg_manycore_clk_name  \
+      -group {sdi_A_sclk} \
+      -group {sdi_B_sclk} \
+      -group {sdi_C_sclk} \
+      -group {sdi_D_sclk} \
+      -group {sdo_A_token_clk} \
+      -group {sdo_B_token_clk} \
+      -group {sdo_C_token_clk} \
+      -group {sdo_D_token_clk}
+   } else {
+    set_clock_groups -asynchronous  \
+      -group $bsg_core_clk_name \
+      -group $bsg_master_io_clk_name \
+      -group {sdi_A_sclk} \
+      -group {sdi_B_sclk} \
+      -group {sdi_C_sclk} \
+      -group {sdi_D_sclk} \
+      -group {sdo_A_token_clk} \
+      -group {sdo_B_token_clk} \
+      -group {sdo_C_token_clk} \
+      -group {sdo_D_token_clk}
+   }
 
   #----------------------------------------------------------------------------
   # CDC checks
