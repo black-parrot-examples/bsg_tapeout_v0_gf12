@@ -274,13 +274,15 @@ module bsg_comm_link_kernel #
   logic [link_channels_p-1:0] im_override_is_posedge;
 
   logic [channel_width_p+1-1:0] im_override_valid_data [link_channels_p-1:0];
+  logic [link_channels_p-1:0] im_infinite_credits_en;
 
   logic [channel_width_p+1-1:0] io_snoop_valid_data_pos [link_channels_p-1:0];
   logic [channel_width_p+1-1:0] io_snoop_valid_data_neg [link_channels_p-1:0];
 
   logic [link_channels_p-1:0] io_trigger_mode_en;
   logic [link_channels_p-1:0] io_trigger_mode_alt_en;
-  logic [link_channels_p-1:0] io_infinite_credits_en;
+
+//  logic [link_channels_p-1:0] io_infinite_credits_en;
 
   logic [link_channels_p-1:0] io_reset_vec_lo;
 
@@ -394,9 +396,9 @@ module bsg_comm_link_kernel #
         ,.out_test_pass_r_o(im_tests_gather)
 
         // AWC fixme: incorrect name should be output clocked, not in
-        // clocked i.e. should be:
-        // ,.out_infinite_credits_o (im_infinite_credits_en[i])
-        ,.in_infinite_credits_o(io_infinite_credits_en[i])
+        // clocked
+        ,.out_infinite_credits_o (im_infinite_credits_en[i])
+        //,.in_infinite_credits_o(io_infinite_credits_en[i])
 
         ,.in_clk_i(io_clk_tline_i[i])
 
@@ -468,9 +470,9 @@ module bsg_comm_link_kernel #
         ,.out_channel_active_o(im_channel_active[i])
 
         // AWC fixme: incorrect name should be output clocked, not in
-        // clocked i.e. should be:
-        // ,.out_infinite_credits_o (im_infinite_credits_en[i])
-        ,.in_infinite_credits_o(io_infinite_credits_en[i])
+        // clocked i.e.
+        ,.out_infinite_credits_o (im_infinite_credits_en[i])
+         //,.in_infinite_credits_o(io_infinite_credits_en[i])
 
         // for input channel
         ,.in_clk_i(io_clk_tline_i[i])
@@ -554,9 +556,9 @@ module bsg_comm_link_kernel #
       ,.io_valid_r_o(im_valid_tline_o[i])
 
       // AWC fixme: incorrect name should be output clocked, not in clocked
-      // i.e. should be:
-      // ,.io_infinite_credits_o (im_infinite_credits_en[i])
-      ,.io_infinite_credits_i (io_infinite_credits_en[i])
+      // i.e.
+      ,.io_infinite_credits_i (im_infinite_credits_en[i])
+      //,.io_infinite_credits_i (io_infinite_credits_en[i])
 
       ,.token_clk_i(token_clk_tline_i[i])
       ,.token_reset_i(token_reset_lo));
