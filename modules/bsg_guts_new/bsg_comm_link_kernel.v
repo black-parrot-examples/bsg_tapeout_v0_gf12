@@ -238,7 +238,7 @@ module bsg_comm_link_kernel #
 
   logic [link_channels_p-1:0] im_channel_active;
 
-   
+
   // common signals for master and slave blocks
 
   genvar i,j;
@@ -297,7 +297,7 @@ module bsg_comm_link_kernel #
 
    logic                                  im_prepare_lo;
    logic  im_calib_done_lo;
-   
+
     bsg_source_sync_channel_control_master_master #
       (.link_channels_p(link_channels_p)
       ,.tests_p(number_tests_lp)
@@ -544,6 +544,47 @@ module bsg_comm_link_kernel #
       ,.iclk_data_o()
       ,.oclk_data_o (core_active_channels_o[i]));
 
+     wire core_loopback_ssi_sso_yumi;
+     wire core_ssi_yumi_in_final;
+
+     // MBT 4/30/17 added to assist with floorplanning
+     // loopback_and_ssi and loopback_mux_ssi should be grouped with the bsg_source_sync_input module
+     // loopback_mux_sso should be grouped with the bsg_source_sync_output module
+
+     bsg_and #(.width_p(1)) loopback_and_ssi
+       (.a_i(core_sso_ready_lo[i])
+        ,.b_i(core_ssi_valid_lo[i])
+        ,.o(core_loopback_ssi_sso_yumi)
+        );
+
+     bsg_mux #(.width_p(1)
+               ,.els_p(2)
+               ) loopback_mux_ssi
+       (.sel_i(core_loopback_en[i])
+        ,.data_i(
+                 { core_loopback_ssi_sso_yumi
+                   , core_yumi_i[i]
+                   }
+                 )
+        ,.data_o(core_ssi_yumi_in_final)
+        );
+
+     wire core_sso_valid_in_final;
+
+     wire [channel_width_p-1:0] core_sso_data_in_final;
+
+     bsg_mux #(.width_p(channel_width_p+1)
+               ,.els_p(2)
+               ) loopback_mux_sso
+       (.sel_i  (core_loopback_en[i])
+        ,.data_i({
+                   { core_ssi_valid_lo[i], core_ssi_data_lo[i]}
+                  ,{ core_valid_i[i]     , core_data_i[i]       }
+                  }
+                 )
+        ,.data_o({core_sso_valid_in_final, core_sso_data_in_final})
+        );
+
     bsg_source_sync_output #
       (.lg_start_credits_p(lg_input_fifo_depth_p)
       ,.lg_credit_to_token_decimation_p(lg_credit_to_token_decimation_p)
@@ -554,12 +595,17 @@ module bsg_comm_link_kernel #
       ,.core_reset_i(core_channel_reset_lo)
 
       // core in
-      ,.core_valid_i(core_loopback_en[i]?
-                     core_ssi_valid_lo[i]
-                    :core_valid_i[i])
-      ,.core_data_i(core_loopback_en[i]?
-                    core_ssi_data_lo[i]
-                   :core_data_i[i])
+//      ,.core_valid_i(core_loopback_en[i]?
+//                     core_ssi_valid_lo[i]
+//                    :core_valid_i[i])
+       ,.core_valid_i(core_sso_valid_in_final)
+
+//      ,.core_data_i(core_loopback_en[i]?
+//                    core_ssi_data_lo[i]
+//                   :core_data_i[i])
+
+       ,.core_data_i(core_sso_data_in_final)
+
       // fixme: any special treatment required for loopback?
       ,.core_ready_o(core_sso_ready_lo[i])
 
@@ -629,9 +675,11 @@ module bsg_comm_link_kernel #
       // core out
       ,.core_valid_o(core_ssi_valid_lo[i])
       ,.core_data_o(core_ssi_data_lo[i])
-      ,.core_yumi_i(core_loopback_en[i]?
-                   (core_sso_ready_lo[i] & core_ssi_valid_lo[i])
-                   :core_yumi_i[i]));
+      ,.core_yumi_i(core_ssi_yumi_in_final)
+       // ,.core_yumi_i(core_loopback_en[i]?
+       //            (core_sso_ready_lo[i] & core_ssi_valid_lo[i])
+       //            :core_yumi_i[i])
+       );
 
   end // block: ch
 
