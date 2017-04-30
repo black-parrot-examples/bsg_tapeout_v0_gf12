@@ -110,6 +110,10 @@ module bsg_comm_link #
   logic [channel_width_p-1:0] core_kernel_data_lo [link_channels_p-1:0];
   logic [link_channels_p-1:0] core_fuser_yumi_lo;
 
+  logic [link_channels_p-1:0] core_kernel_valid_pre_lo;
+  logic [channel_width_p-1:0] core_kernel_data_pre_lo [link_channels_p-1:0];
+  logic [link_channels_p-1:0] core_fuser_ready_pre_lo, core_fuser_yumi_pre_lo;
+
   logic [link_channels_p-1:0] core_fuser_valid_lo;
   logic [channel_width_p-1:0] core_fuser_data_lo [link_channels_p-1:0];
   logic [link_channels_p-1:0] core_kernel_ready_lo;
@@ -144,6 +148,42 @@ module bsg_comm_link #
     ,.unfused_data_o(core_fuser_data_lo)
     ,.unfused_ready_i(core_kernel_ready_lo));
 
+   // *****************************************************************************
+   // fix timing path that looks like this:
+   //
+   // Beginpoint: g/comm_link/kernel/ch_0__ssi/twofer/head_r_reg/Q
+   // Endpoint:   g/comm_link/fuser/sbox/sbox_0__pipe_in_infifo/mem_1r1w/synth/mem_
+
+   genvar                     i;
+
+   for (i = 0; i < link_channels_p; i=i+1)
+     begin : ch
+
+        // place this 2/3 of the way from SSI to sbox (fuser)
+
+        bsg_two_fifo #(.width_p(channel_width_p)) twofer_pre_fuser
+         (.clk_i(core_clk_i)
+          ,.reset_i(~core_kernel_calib_done_lo)
+
+          // input side, to kernel
+          ,.v_i     (core_kernel_valid_pre_lo[i])
+          ,.data_i  (core_kernel_data_pre_lo [i])
+          ,.ready_o (core_fuser_ready_pre_lo [i])
+
+          // output side, to fuser
+          ,.v_o     (core_kernel_valid_lo[i])
+          ,.data_o  (core_kernel_data_lo [i])
+          ,.yumi_i  (core_fuser_yumi_lo  [i])
+          );
+
+        // place this near the bsg_source_sync_input block
+        bsg_and #(.width_p(1)) twofer_fc_conv
+        (.a_i  (core_fuser_ready_pre_lo[i] )
+         ,.b_i (core_kernel_valid_pre_lo[i])
+         ,.o(core_fuser_yumi_pre_lo[i])
+         );
+     end
+
   // kernel
 
   bsg_comm_link_kernel #
@@ -167,9 +207,9 @@ module bsg_comm_link #
     ,.core_data_i(core_fuser_data_lo)
     ,.core_ready_o(core_kernel_ready_lo)
     // core out
-    ,.core_valid_o(core_kernel_valid_lo)
-    ,.core_data_o(core_kernel_data_lo)
-    ,.core_yumi_i(core_fuser_yumi_lo)
+    ,.core_valid_o(core_kernel_valid_pre_lo)
+    ,.core_data_o(core_kernel_data_pre_lo)
+    ,.core_yumi_i(core_fuser_yumi_pre_lo)
     // io in
     ,.io_clk_tline_i(io_clk_tline_i)
     ,.io_valid_tline_i(io_valid_tline_i)
