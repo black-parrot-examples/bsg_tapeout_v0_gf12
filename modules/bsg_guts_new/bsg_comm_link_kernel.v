@@ -235,32 +235,9 @@ module bsg_comm_link_kernel #
 
   assign im_slave_reset_tline_r_o = im_slave_reset_tline_r;
 
-  // calibration done
-
-  logic im_calib_done_lo, im_calib_done_r;
-  logic core_calib_done_r;
-
-  bsg_launch_sync_sync #
-    (.width_p(1))
-  out_to_core_sync_calib_done
-    (.iclk_i(io_master_clk_i)
-    ,.iclk_reset_i(1'b0)
-    ,.oclk_i(core_clk_i)
-    ,.iclk_data_i(im_calib_done_lo)
-    ,.iclk_data_o(im_calib_done_r)
-    ,.oclk_data_o(core_calib_done_r));
-
-  assign core_calib_done_r_o = core_calib_done_r;
 
   logic [link_channels_p-1:0] im_channel_active;
 
-  // synopsys translate_off
-  always @(negedge io_master_clk_i)
-    if (im_calib_done_lo === 1'b1 && im_calib_done_r === 1'b0)
-      $display("### %s calibration COMPLETED with active channels: (%b)"
-              ,master_p ? "Master" : "Slave"
-              ,im_channel_active);
-  // synopsys translate_on
    
   // common signals for master and slave blocks
 
@@ -285,6 +262,7 @@ module bsg_comm_link_kernel #
 //  logic [link_channels_p-1:0] io_infinite_credits_en;
 
   logic [link_channels_p-1:0] io_reset_vec_lo;
+  logic [link_channels_p-1:0] io_calib_done;
 
   logic [link_channels_p-1:0] core_loopback_en;
   logic core_channel_reset_lo;
@@ -317,8 +295,9 @@ module bsg_comm_link_kernel #
     // + 1; for the "final test"
     logic [$clog2(number_tests_lp+1)-1:0] im_test_index;
 
-    logic im_prepare_lo;
-
+   logic                                  im_prepare_lo;
+   logic  im_calib_done_lo;
+   
     bsg_source_sync_channel_control_master_master #
       (.link_channels_p(link_channels_p)
       ,.tests_p(number_tests_lp)
@@ -420,6 +399,44 @@ module bsg_comm_link_kernel #
       assign io_trigger_mode_alt_en[i] = 1'b0;
       assign core_loopback_en[i] = 1'b0;
 
+       // calibration done
+
+       logic im_calib_done_r;
+       logic core_calib_done_r;
+
+       bsg_launch_sync_sync #
+         (.width_p(1))
+       out_to_core_sync_calib_done
+         (.iclk_i(io_master_clk_i)
+          ,.iclk_reset_i(1'b0)
+          ,.oclk_i(core_clk_i)
+          ,.iclk_data_i(im_calib_done_lo)
+          ,.iclk_data_o(im_calib_done_r)
+          ,.oclk_data_o(core_calib_done_r));
+
+// synopsys translate_off
+
+       always @(negedge io_master_clk_i)
+         if (im_calib_done_lo === 1'b1 && im_calib_done_r === 1'b0)
+           $display("### %s calibration COMPLETED with active channels: (%b)"
+                    ,master_p ? "Master" : "Slave"
+                    ,im_channel_active);
+// synopsys translate_on
+
+       assign core_calib_done_r_o = core_calib_done_r;
+
+
+     // MBT: 4/11/17 not used by slave side
+    bsg_launch_sync_sync #
+      (.width_p(1))
+    im_to_io_calib_done
+      (.iclk_i(io_master_clk_i)
+      ,.iclk_reset_i(1'b0)
+      ,.oclk_i(io_clk_tline_i[i])
+      ,.iclk_data_i (im_calib_done_lo)
+      ,.iclk_data_o()
+      ,.oclk_data_o(io_calib_done[i]));
+
     end // block: ch
 
   end // block: mstr
@@ -432,7 +449,9 @@ module bsg_comm_link_kernel #
     // low, all channels will all activate at the same time.
     //
     // no waiting for differences in channel clocks is necessary.
-    assign im_calib_done_lo = (|im_channel_active);
+
+    assign core_calib_done_r_o = (|core_active_channels_o);
+
     assign im_slave_reset_tline_r = 1'b0;
 
     // slaver im and core reset
@@ -441,6 +460,8 @@ module bsg_comm_link_kernel #
 
     // create all of the input and output channels
     for (i=0; i < link_channels_p; i=i+1) begin: ch
+
+       assign io_calib_done[i] = 1'b0;
 
       // no launch flop necessary here
       // and we synchronize directly from
@@ -487,7 +508,6 @@ module bsg_comm_link_kernel #
 
   // source sync output input
 
-  logic [link_channels_p-1:0] io_calib_done;
 
   logic [link_channels_p-1:0] core_ssi_valid_lo;
   logic [channel_width_p-1:0] core_ssi_data_lo [link_channels_p-1:0];
@@ -562,16 +582,6 @@ module bsg_comm_link_kernel #
 
       ,.token_clk_i(token_clk_tline_i[i])
       ,.token_reset_i(token_reset_lo));
-
-    bsg_launch_sync_sync #
-      (.width_p(1))
-    im_to_io_calib_done
-      (.iclk_i(io_master_clk_i)
-      ,.iclk_reset_i(1'b0)
-      ,.oclk_i(io_clk_tline_i[i])
-      ,.iclk_data_i (im_calib_done_lo)
-      ,.iclk_data_o()
-      ,.oclk_data_o(io_calib_done[i]));
 
     bsg_source_sync_input #
       (.lg_fifo_depth_p(lg_input_fifo_depth_p)
