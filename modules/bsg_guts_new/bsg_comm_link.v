@@ -193,7 +193,9 @@ module bsg_comm_link #
     ,.master_p(master_p)
     ,.master_bypass_test_p(master_bypass_test_p)
     ,.lg_credit_to_token_decimation_p(lg_credit_to_token_decimation_p)
-    ,.lg_input_fifo_depth_p(lg_input_fifo_depth_p))
+     ,.lg_input_fifo_depth_p(lg_input_fifo_depth_p)
+     ,.master_to_slave_speedup_p(master_to_slave_speedup_p)
+     )
   kernel
     (.core_clk_i(core_clk_i)
     ,.io_master_clk_i(io_master_clk_i)

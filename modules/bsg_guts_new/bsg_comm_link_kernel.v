@@ -19,6 +19,10 @@
 //
 // All resets in this module are synchronous. Care has been made to
 // synchronize all of the resets. See notes below for token reset.
+//
+// Debugging: See  https://docs.google.com/presentation/d/1_IeZTNmURgHV2VaySqe_Ckv6UaM1QqvT-7I_mH9adl4
+// for example waveforms.
+//
 //--------------------------------------------------------------------------
 
 /*
@@ -156,8 +160,14 @@ module bsg_comm_link_kernel #
   ,parameter master_lg_token_width_p = lg_credit_to_token_decimation_p + 2
   ,parameter slave_lg_token_width_p = lg_credit_to_token_decimation_p + 2
 
-  // time after reset to start calibration process
-  ,parameter master_lg_wait_after_reset_p = $clog2(1 + master_to_slave_speedup_p*128)
+   // mbt: we reduce this from 128 to 16 to improve simulation time.
+   // this means that the reset chain cannot be more than 16 flops deep
+   // in any clock domain, including any reset paths that involve CDC.
+   // however, keep in mind that the FSB.
+
+  ,parameter reset_depth_p = 16
+   // time after reset to start calibration process
+  ,parameter master_lg_wait_after_reset_p = $clog2(1 + master_to_slave_speedup_p*reset_depth_p)
 
   // time to assert reset before calibration code
   ,parameter master_calib_prepare_cycles_p = master_to_slave_speedup_p * 2 * (2**(master_lg_token_width_p+1)+2**(slave_lg_token_width_p+1))
@@ -271,7 +281,10 @@ module bsg_comm_link_kernel #
 
   if (master_p) begin : mstr
 
-    localparam number_tests_lp=5;
+     // in the case where we are bypassing all tests, we will only run the first
+     // "test", which resets the clock.
+
+     localparam number_tests_lp=5;
 
     // wait a certain number of cycles after global reset to start
     // global calibration
@@ -302,7 +315,8 @@ module bsg_comm_link_kernel #
       (.link_channels_p(link_channels_p)
       ,.tests_p(number_tests_lp)
       ,.prepare_cycles_p(master_calib_prepare_cycles_p)
-      ,.timeout_cycles_p(master_calib_timeout_cycles_p))
+      ,.timeout_cycles_p(master_calib_timeout_cycles_p)
+       )
     master_master
       (.clk_i(io_master_clk_i)
       ,.reset_i(im_reset_lo)
