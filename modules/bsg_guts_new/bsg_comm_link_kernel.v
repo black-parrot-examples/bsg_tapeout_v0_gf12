@@ -177,7 +177,10 @@ module bsg_comm_link_kernel #
   ,parameter master_lg_out_prepare_hold_cycles_p = $clog2(5*master_to_slave_speedup_p + 10)
 
   // fixme: derive value better
-  ,parameter master_calib_timeout_cycles_p = master_to_slave_speedup_p*5000)
+  ,parameter master_calib_timeout_cycles_p = master_to_slave_speedup_p*5000
+      
+  // im channel select mask
+  ,parameter channel_select_p = 4'b1111)
 
   (input core_clk_i
   ,input io_master_clk_i
@@ -407,7 +410,7 @@ module bsg_comm_link_kernel #
       assign im_clk_init[i] = im_reset_lo & (~im_reset_r);
 
       // activate the channel if all of the "real" tests passed
-      assign im_channel_active[i] = (& im_tests_gather[number_tests_lp-1:0]);
+      assign im_channel_active[i] = (& im_tests_gather[number_tests_lp-1:0]) & channel_select_p[i];
 
       assign io_trigger_mode_en[i] = 1'b0;
       assign io_trigger_mode_alt_en[i] = 1'b0;

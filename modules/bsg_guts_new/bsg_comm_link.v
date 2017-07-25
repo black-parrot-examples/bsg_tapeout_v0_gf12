@@ -65,7 +65,10 @@ module bsg_comm_link #
   ,parameter lg_input_fifo_depth_p = 5
 
   // core (for fuser) width
-  ,parameter width_p=core_channels_p*channel_width_p)
+  ,parameter width_p=core_channels_p*channel_width_p
+  
+  // channel select mask
+  ,parameter channel_select_p = 4'b1111)
 
   (input core_clk_i
   ,input io_master_clk_i
@@ -195,6 +198,7 @@ module bsg_comm_link #
     ,.lg_credit_to_token_decimation_p(lg_credit_to_token_decimation_p)
      ,.lg_input_fifo_depth_p(lg_input_fifo_depth_p)
      ,.master_to_slave_speedup_p(master_to_slave_speedup_p)
+	 ,.channel_select_p(channel_select_p)
      )
   kernel
     (.core_clk_i(core_clk_i)
