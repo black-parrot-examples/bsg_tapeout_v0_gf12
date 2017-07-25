@@ -68,7 +68,7 @@ module bsg_comm_link #
   ,parameter width_p=core_channels_p*channel_width_p
   
   // channel select mask
-  ,parameter channel_select_p = 4'b1111)
+  ,parameter channel_select_p = (1<<(link_channels_p))-1 )
 
   (input core_clk_i
   ,input io_master_clk_i

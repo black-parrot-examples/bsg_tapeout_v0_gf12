@@ -180,7 +180,7 @@ module bsg_comm_link_kernel #
   ,parameter master_calib_timeout_cycles_p = master_to_slave_speedup_p*5000
       
   // im channel select mask
-  ,parameter channel_select_p = 4'b1111)
+  ,parameter channel_select_p = (1<<(link_channels_p))-1 )
 
   (input core_clk_i
   ,input io_master_clk_i
