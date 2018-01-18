@@ -14,6 +14,7 @@ module  bsg_test_node_master
    // control
    , input en_i
    , output done_o
+   , output error_o
 
    // input channel
    , input  v_i
@@ -79,6 +80,7 @@ end
 
 
    assign done_o = done_lo;
+   assign error_o = error_lo;
 
 endmodule
 
