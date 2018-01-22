@@ -3,7 +3,8 @@
 module  bsg_test_node_master
    import bsg_fsb_pkg::*;
   #(parameter ring_width_p="inv"
-    , parameter using_MITM_rom_p = 0
+    , parameter enable_MITM_stimulus_p = 0
+    , parameter enable_MITM_response_p = 0
     , parameter master_id_p="inv"
     , parameter client_id_p="inv"
     )
@@ -62,8 +63,15 @@ module  bsg_test_node_master
         ,.error_o(error_lo)
         );
 
-if( using_MITM_rom_p == 1'b1 ) begin
-   bsg_fsb_MITM_rom #(.width_p      (trace_width_lp    )
+if( enable_MITM_stimulus_p  == 1'b1 ) begin
+   bsg_fsb_MITM_stimulus_rom #(.width_p      (trace_width_lp    )
+                        ,.addr_width_p(rom_addr_width_lp)
+                        ) rom
+     (.addr_i (rom_addr_li)
+      ,.data_o(rom_data_lo)
+      );
+end else if( enable_MITM_response_p  == 1'b1 ) begin
+   bsg_fsb_MITM_response_rom #(.width_p      (trace_width_lp    )
                         ,.addr_width_p(rom_addr_width_lp)
                         ) rom
      (.addr_i (rom_addr_li)
