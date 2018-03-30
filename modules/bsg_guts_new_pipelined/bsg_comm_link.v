@@ -117,13 +117,21 @@ module bsg_comm_link #
   logic [channel_width_p-1:0] core_kernel_data_pre_lo [link_channels_p-1:0];
   logic [link_channels_p-1:0] core_fuser_ready_pre_lo, core_fuser_yumi_pre_lo;
 
+  logic [link_channels_p-1:0] core_kernel_valid_int_lo;
+  logic [channel_width_p-1:0] core_kernel_data_int_lo [link_channels_p-1:0];
+  logic [link_channels_p-1:0] core_fuser_ready_int_lo;
+
   logic [link_channels_p-1:0] core_fuser_valid_lo;
   logic [channel_width_p-1:0] core_fuser_data_lo [link_channels_p-1:0];
-  logic [link_channels_p-1:0] core_kernel_ready_lo, core_kernel_yumi_lo;
+  logic [link_channels_p-1:0] core_kernel_ready_lo;
 
-  logic [link_channels_p-1:0] core_fuser_valid_pre_lo;
-  logic [channel_width_p-1:0] core_fuser_data_pre_lo [link_channels_p-1:0];
-  logic [link_channels_p-1:0] core_kernel_ready_pre_lo;
+  logic [link_channels_p-1:0] core_fuser_valid_post_lo;
+  logic [channel_width_p-1:0] core_fuser_data_post_lo [link_channels_p-1:0];
+  logic [link_channels_p-1:0] core_kernel_ready_post_lo;
+
+  logic [link_channels_p-1:0] core_fuser_valid_int_lo;
+  logic [channel_width_p-1:0] core_fuser_data_int_lo [link_channels_p-1:0];
+  logic [link_channels_p-1:0] core_kernel_ready_int_lo;
 
   bsg_comm_link_fuser #
     (.channel_width_p(channel_width_p)
@@ -151,9 +159,9 @@ module bsg_comm_link #
     ,.unfused_data_i(core_kernel_data_lo)
     ,.unfused_yumi_o(core_fuser_yumi_lo)
     // unfused out
-    ,.unfused_valid_o(core_fuser_valid_pre_lo)
-    ,.unfused_data_o(core_fuser_data_pre_lo)
-    ,.unfused_ready_i(core_kernel_ready_pre_lo));
+    ,.unfused_valid_o(core_fuser_valid_post_lo)
+    ,.unfused_data_o(core_fuser_data_post_lo)
+    ,.unfused_ready_i(core_kernel_ready_post_lo));
 
    // *****************************************************************************
    // fix timing path that looks like this:
@@ -166,9 +174,15 @@ module bsg_comm_link #
    for (i = 0; i < link_channels_p; i=i+1)
      begin : ch
 
-        // place this 2/3 of the way from SSI to sbox (fuser)
+        // place this near the bsg_source_sync_input block
+        bsg_and #(.width_p(1)) twofer_fc_conv
+        (.a_i  (core_fuser_ready_pre_lo[i] )
+         ,.b_i (core_kernel_valid_pre_lo[i])
+         ,.o   (core_fuser_yumi_pre_lo[i])
+         );
 
-        bsg_two_fifo #(.width_p(channel_width_p)) twofer_pre_fuser
+        // place this 1/5 of the way from SSI to sbox (fuser)
+        bsg_two_fifo #(.width_p(channel_width_p)) twofer_pre_fuser_0
          (.clk_i(core_clk_i)
           ,.reset_i(~core_kernel_calib_done_lo)
 
@@ -177,42 +191,59 @@ module bsg_comm_link #
           ,.data_i  (core_kernel_data_pre_lo [i])
           ,.ready_o (core_fuser_ready_pre_lo [i])
 
+          // output side, to twofer
+          ,.v_o     (core_kernel_valid_int_lo[i])
+          ,.data_o  (core_kernel_data_int_lo [i])
+          ,.yumi_i  (core_kernel_valid_int_lo[i] & core_fuser_ready_int_lo [i])
+          );
+
+        // place this 4/5 of the way from SSI to sbox (fuser)
+        bsg_two_fifo #(.width_p(channel_width_p)) twofer_pre_fuser_1
+         (.clk_i(core_clk_i)
+          ,.reset_i(~core_kernel_calib_done_lo)
+
+          // input side, to twofer
+          ,.v_i     (core_kernel_valid_int_lo[i])
+          ,.data_i  (core_kernel_data_int_lo [i])
+          ,.ready_o (core_fuser_ready_int_lo [i])
+
           // output side, to fuser
           ,.v_o     (core_kernel_valid_lo[i])
           ,.data_o  (core_kernel_data_lo [i])
           ,.yumi_i  (core_fuser_yumi_lo  [i])
           );
 
-        // place this near the bsg_source_sync_input block
-        bsg_and #(.width_p(1)) twofer_fc_conv
-        (.a_i  (core_fuser_ready_pre_lo[i] )
-         ,.b_i (core_kernel_valid_pre_lo[i])
-         ,.o(core_fuser_yumi_pre_lo[i])
-         );
-     end
-
-   for (i = 0; i < link_channels_p; i=i+1)
-     begin : ch_b
-        bsg_two_fifo #(.width_p(channel_width_p)) twofer_pre_kernel
+        // place this 1/3 of the way from sbox (fuser) to SSO
+        bsg_two_fifo #(.width_p(channel_width_p)) twofer_post_fuser_0
           (.clk_i(core_clk_i)
           ,.reset_i(~core_kernel_calib_done_lo)
 
-          // input side, to kernel
-          ,.v_i     (core_fuser_valid_pre_lo  [i])
-          ,.data_i  (core_fuser_data_pre_lo   [i])
-          ,.ready_o (core_kernel_ready_pre_lo [i])
+          // input side, to fuser
+          ,.v_i     (core_fuser_valid_post_lo  [i])
+          ,.data_i  (core_fuser_data_post_lo   [i])
+          ,.ready_o (core_kernel_ready_post_lo [i])
 
-          // output side, to fuser
-          ,.v_o     (core_fuser_valid_lo [i])
-          ,.data_o  (core_fuser_data_lo  [i])
-          ,.yumi_i  (core_kernel_yumi_lo [i])
+          // output side, to twofer
+          ,.v_o     (core_fuser_valid_int_lo [i])
+          ,.data_o  (core_fuser_data_int_lo [i])
+          ,.yumi_i  (core_fuser_valid_int_lo[i] & core_kernel_ready_int_lo[i])
           );
 
-       bsg_and #(.width_p(1)) twofer_kc_conv
-         (.a_i (core_fuser_valid_lo  [i])
-         ,.b_i (core_kernel_ready_lo [i])
-         ,.o   (core_kernel_yumi_lo  [i])
-         );
+        // place this 2/3 of the way from sbox (fuser) to SSO
+        bsg_two_fifo #(.width_p(channel_width_p)) twofer_post_fuser_1
+          (.clk_i(core_clk_i)
+          ,.reset_i(~core_kernel_calib_done_lo)
+
+          // input side, to fuser
+          ,.v_i     (core_fuser_valid_int_lo [i])
+          ,.data_i  (core_fuser_data_int_lo [i])
+          ,.ready_o (core_kernel_ready_int_lo [i])
+
+          // output side, to twofer
+          ,.v_o     (core_fuser_valid_lo [i])
+          ,.data_o  (core_fuser_data_lo [i])
+          ,.yumi_i  (core_fuser_valid_lo [i] & core_kernel_ready_lo [i])
+          );
      end
 
   // kernel
