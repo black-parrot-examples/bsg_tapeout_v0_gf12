@@ -183,9 +183,10 @@ module bsg_comm_link_kernel #
   ,parameter channel_select_p = (1<<(link_channels_p))-1
 
   // number of pipelined register for core_calib_done signal.
-  // after the 'OR' gate which gather all active chanlnels from
+  // BOTH BEFORE and AFTER the 'OR' gate which gather all active chanlnels from
   // the edge of the chip.
   ,parameter core_calib_done_pipe_depth_p = 4)
+
   (input core_clk_i
   ,input io_master_clk_i
   ,input async_reset_i
@@ -474,11 +475,24 @@ module bsg_comm_link_kernel #
     // FIX:     Shaolin 03/31/2018
     //          Add few repeated register for the calib_done signal
     //          which will spread out the chip for reset signal generation
-    localparam  depth_lp        = core_calib_done_pipe_depth_p   ;
-    logic       core_calib_done_r[ depth_lp ];
+    localparam                  depth_lp        = core_calib_done_pipe_depth_p   ;
+    genvar                      depth;
 
-    wire        core_calib_done_n = (|core_active_channels_o);
-    genvar      depth;
+
+    //pipeline the active channel path
+    logic[link_channels_p-1:0]  core_active_channels_r [ depth_lp ];
+
+    always_ff@( posedge core_clk_i )
+        core_active_channels_r[ 0 ] <= core_active_channels_o;
+
+    for( depth=depth_lp-1; depth > 0; depth --) begin
+        always_ff@( posedge core_clk_i )
+            core_active_channels_r[ depth ] <=  core_active_channels_r[ depth-1 ];
+    end
+
+    //pipeline the calib_done path
+    logic       core_calib_done_r[ depth_lp ];
+    wire        core_calib_done_n               = (|core_active_channels_r[ depth_lp -1 ]);
 
     always_ff@( posedge core_clk_i )
         core_calib_done_r[ 0 ] <= core_calib_done_n;
