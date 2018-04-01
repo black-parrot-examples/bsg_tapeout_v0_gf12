@@ -185,7 +185,7 @@ module bsg_comm_link_kernel #
   // number of pipelined register for core_calib_done signal.
   // BOTH BEFORE and AFTER the 'OR' gate which gather all active chanlnels from
   // the edge of the chip.
-  ,parameter core_calib_done_pipe_depth_p = 4)
+  ,parameter core_calib_done_pipe_depth_p = 2)
 
   (input core_clk_i
   ,input io_master_clk_i
@@ -475,34 +475,30 @@ module bsg_comm_link_kernel #
     // FIX:     Shaolin 03/31/2018
     //          Add few repeated register for the calib_done signal
     //          which will spread out the chip for reset signal generation
-    localparam                  depth_lp        = core_calib_done_pipe_depth_p   ;
-    genvar                      depth;
 
 
     //pipeline the active channel path
-    logic[link_channels_p-1:0]  core_active_channels_r [ depth_lp ];
-
-    always_ff@( posedge core_clk_i )
-        core_active_channels_r[ 0 ] <= core_active_channels_o;
-
-    for( depth=depth_lp-1; depth > 0; depth --) begin
-        always_ff@( posedge core_clk_i )
-            core_active_channels_r[ depth ] <=  core_active_channels_r[ depth-1 ];
-    end
+    wire [link_channels_p-1:0]  core_active_channels_delayed_n  ;
+    bsg_dff_chain #(     .width_p           ( link_channels_p               )
+                        ,.num_stages_p      ( core_calib_done_pipe_depth_p  )
+                   ) ac_repeater
+                   (
+                         .clk_i  ( core_clk_i                           )
+                        ,.data_i ( core_active_channels_o               )
+                        ,.data_o ( core_active_channels_delayed_n       )
+                   );
 
     //pipeline the calib_done path
-    logic       core_calib_done_r[ depth_lp ];
-    wire        core_calib_done_n               = (|core_active_channels_r[ depth_lp -1 ]);
+    wire        core_calib_done_n               = (|core_active_channels_delayed_n);
 
-    always_ff@( posedge core_clk_i )
-        core_calib_done_r[ 0 ] <= core_calib_done_n;
-
-    for( depth=depth_lp-1; depth > 0; depth --) begin
-        always_ff@( posedge core_clk_i )
-                core_calib_done_r[ depth ] <= core_calib_done_r[ depth -1 ];
-    end
-
-    assign core_calib_done_r_o    = core_calib_done_r[ depth_lp-1 ] ;
+    bsg_dff_chain #(     .width_p           ( 1                             )
+                        ,.num_stages_p      ( core_calib_done_pipe_depth_p  )
+                   ) cd_repeater
+                   (
+                         .clk_i  ( core_clk_i                           )
+                        ,.data_i ( core_calib_done_n                    )
+                        ,.data_o ( core_calib_done_r_o                  )
+                   );
 
     assign im_slave_reset_tline_r = 1'b0;
 
