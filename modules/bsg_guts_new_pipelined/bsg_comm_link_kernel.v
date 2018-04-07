@@ -504,7 +504,17 @@ module bsg_comm_link_kernel #
 
     // slaver im and core reset
     assign im_channel_reset_lo = im_reset_lo;
-    assign core_channel_reset_lo = core_reset_lo;
+    // Fix      : Shaolin  04/06/2018
+    //            Add pipelined register for the core_channel_reset_lo
+    //assign core_channel_reset_lo = core_reset_lo;
+    bsg_dff_chain #(     .width_p           ( 1                             )
+                        ,.num_stages_p      ( core_calib_done_pipe_depth_p  )
+                   ) channel_rst_repeater
+                   (
+                         .clk_i  ( core_clk_i                           )
+                        ,.data_i ( core_reset_lo                        )
+                        ,.data_o ( core_channel_reset_lo                )
+                   );
 
     // create all of the input and output channels
     for (i=0; i < link_channels_p; i=i+1) begin: ch
