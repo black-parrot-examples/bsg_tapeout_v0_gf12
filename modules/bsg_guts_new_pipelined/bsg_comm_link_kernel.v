@@ -504,17 +504,8 @@ module bsg_comm_link_kernel #
 
     // slaver im and core reset
     assign im_channel_reset_lo = im_reset_lo;
-    // Fix      : Shaolin  04/06/2018
-    //            Add pipelined register for the core_channel_reset_lo
-    //assign core_channel_reset_lo = core_reset_lo;
-    bsg_dff_chain #(     .width_p           ( 1                             )
-                        ,.num_stages_p      ( core_calib_done_pipe_depth_p  )
-                   ) channel_rst_repeater
-                   (
-                         .clk_i  ( core_clk_i                           )
-                        ,.data_i ( core_reset_lo                        )
-                        ,.data_o ( core_channel_reset_lo                )
-                   );
+    assign core_channel_reset_lo = core_reset_lo;
+
 
     // create all of the input and output channels
     for (i=0; i < link_channels_p; i=i+1) begin: ch
@@ -589,6 +580,21 @@ module bsg_comm_link_kernel #
 
   assign token_reset_lo = im_channel_reset_lo;
 
+
+  //FIX    Shaolin: 04/09/2019
+  //       pipeline and fanout the reset
+  wire [ link_channels_p-1:0]         core_channel_fanout_reset_lo;
+
+  for (i=0; i< link_channels_p; i++) begin: fan_out_reset
+      bsg_dff_chain #(     .width_p           ( 1                             )
+                          ,.num_stages_p      ( core_calib_done_pipe_depth_p  )
+                     ) channel_rst_repeater
+                     (
+                           .clk_i  ( core_clk_i                           )
+                          ,.data_i ( core_channel_reset_lo                )
+                          ,.data_o ( core_channel_fanout_reset_lo[ i ]    )
+                     );
+  end
   // backend placement scripts looking for "ch" block
   for (i=0; i < link_channels_p; i=i+1) begin: ch
 
@@ -650,7 +656,7 @@ module bsg_comm_link_kernel #
     sso
       // core clk and reset
       (.core_clk_i(core_clk_i)
-      ,.core_reset_i(core_channel_reset_lo)
+      ,.core_reset_i(core_channel_fanout_reset_lo[i])
 
       // core in
 //      ,.core_valid_i(core_loopback_en[i]?
@@ -728,7 +734,7 @@ module bsg_comm_link_kernel #
 
       // core clk and reset
       ,.core_clk_i(core_clk_i)
-      ,.core_reset_i(core_channel_reset_lo)
+      ,.core_reset_i(core_channel_fanout_reset_lo[i])
 
       // core out
       ,.core_valid_o(core_ssi_valid_lo[i])
