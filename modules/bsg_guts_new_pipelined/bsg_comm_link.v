@@ -66,9 +66,13 @@ module bsg_comm_link #
 
   // core (for fuser) width
   ,parameter width_p=core_channels_p*channel_width_p
-  
+
   // channel select mask
-  ,parameter channel_select_p = (1<<(link_channels_p))-1 )
+  ,parameter channel_select_p = (1<<(link_channels_p))-1
+
+  //How many pipeline register should be put for reset and
+  //calibration done signal.
+  ,parameter core_calib_done_pipe_depth_p = 2)
 
   (input core_clk_i
   ,input io_master_clk_i
@@ -173,6 +177,17 @@ module bsg_comm_link #
 
    for (i = 0; i < link_channels_p; i=i+1)
      begin : ch
+        //this is a local variables
+        logic core_kernel_calib_done_fanout_lo;
+
+        bsg_dff_chain #( .width_p           ( 1                             )
+                        ,.num_stages_p      ( core_calib_done_pipe_depth_p  )
+                   ) ac_fanout_repeater
+                   (
+                         .clk_i  ( core_clk_i                           )
+                        ,.data_i ( core_kernel_calib_done_lo            )
+                        ,.data_o ( core_kernel_calib_done_fanout_lo     )
+                   );
 
         // place this near the bsg_source_sync_input block
         bsg_and #(.width_p(1)) twofer_fc_conv
@@ -184,7 +199,7 @@ module bsg_comm_link #
         // place this 1/5 of the way from SSI to sbox (fuser)
         bsg_two_fifo #(.width_p(channel_width_p)) twofer_pre_fuser_0
          (.clk_i(core_clk_i)
-          ,.reset_i(~core_kernel_calib_done_lo)
+          ,.reset_i(~core_kernel_calib_done_fanout_lo)
 
           // input side, to kernel
           ,.v_i     (core_kernel_valid_pre_lo[i])
@@ -200,7 +215,7 @@ module bsg_comm_link #
         // place this 4/5 of the way from SSI to sbox (fuser)
         bsg_two_fifo #(.width_p(channel_width_p)) twofer_pre_fuser_1
          (.clk_i(core_clk_i)
-          ,.reset_i(~core_kernel_calib_done_lo)
+          ,.reset_i(~core_kernel_calib_done_fanout_lo)
 
           // input side, to twofer
           ,.v_i     (core_kernel_valid_int_lo[i])
@@ -216,7 +231,7 @@ module bsg_comm_link #
         // place this 1/3 of the way from sbox (fuser) to SSO
         bsg_two_fifo #(.width_p(channel_width_p)) twofer_post_fuser_0
           (.clk_i(core_clk_i)
-          ,.reset_i(~core_kernel_calib_done_lo)
+          ,.reset_i(~core_kernel_calib_done_fanout_lo)
 
           // input side, to fuser
           ,.v_i     (core_fuser_valid_post_lo  [i])
@@ -232,7 +247,7 @@ module bsg_comm_link #
         // place this 2/3 of the way from sbox (fuser) to SSO
         bsg_two_fifo #(.width_p(channel_width_p)) twofer_post_fuser_1
           (.clk_i(core_clk_i)
-          ,.reset_i(~core_kernel_calib_done_lo)
+          ,.reset_i(~core_kernel_calib_done_fanout_lo)
 
           // input side, to fuser
           ,.v_i     (core_fuser_valid_int_lo [i])
@@ -255,9 +270,10 @@ module bsg_comm_link #
     ,.master_p(master_p)
     ,.master_bypass_test_p(master_bypass_test_p)
     ,.lg_credit_to_token_decimation_p(lg_credit_to_token_decimation_p)
-     ,.lg_input_fifo_depth_p(lg_input_fifo_depth_p)
-     ,.master_to_slave_speedup_p(master_to_slave_speedup_p)
-	 ,.channel_select_p(channel_select_p)
+    ,.lg_input_fifo_depth_p(lg_input_fifo_depth_p)
+    ,.master_to_slave_speedup_p(master_to_slave_speedup_p)
+    ,.channel_select_p(channel_select_p)
+    ,.core_calib_done_pipe_depth_p (core_calib_done_pipe_depth_p )
      )
   kernel
     (.core_clk_i(core_clk_i)

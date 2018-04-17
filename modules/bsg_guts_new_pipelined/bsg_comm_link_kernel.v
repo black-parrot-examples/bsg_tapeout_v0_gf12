@@ -183,8 +183,10 @@ module bsg_comm_link_kernel #
   ,parameter channel_select_p = (1<<(link_channels_p))-1
 
   // number of pipelined register for core_calib_done signal.
-  // BOTH BEFORE and AFTER the 'OR' gate which gather all active chanlnels from
+  // BEFORE the 'OR' gate which gather all active chanlnels from
   // the edge of the chip.
+  // The pipeline register AFTER the or gate is moved to
+  // comm-link top level for manual fan-out
   ,parameter core_calib_done_pipe_depth_p = 2)
 
   (input core_clk_i
@@ -489,16 +491,7 @@ module bsg_comm_link_kernel #
                    );
 
     //pipeline the calib_done path
-    wire        core_calib_done_n               = (|core_active_channels_delayed_n);
-
-    bsg_dff_chain #(     .width_p           ( 1                             )
-                        ,.num_stages_p      ( core_calib_done_pipe_depth_p  )
-                   ) cd_repeater
-                   (
-                         .clk_i  ( core_clk_i                           )
-                        ,.data_i ( core_calib_done_n                    )
-                        ,.data_o ( core_calib_done_r_o                  )
-                   );
+    assign        core_calib_done_r_o   = (|core_active_channels_delayed_n);
 
     assign im_slave_reset_tline_r = 1'b0;
 
