@@ -77,6 +77,9 @@ module bsg_guts #(parameter num_channels_p=4
                   ,.yumi_i (core_node_yumi_B   [i])
 
                   ,.en_i   (core_node_en_r_lo  [i])
+                  ,.finish_lo()
+                  ,.success_lo()
+                  ,.timeout_lo()
                   );
           end
         else
