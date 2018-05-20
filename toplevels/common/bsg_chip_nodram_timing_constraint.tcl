@@ -92,9 +92,9 @@ proc bsg_chip_ucsd_bsg_332_nodram_timing_constraint {bsg_reset_port \
 
   # input token
   set sdo_A_token_clk_port [get_ports p_sdo_token_i[0]]
-  set sdo_B_token_clk_port [get_ports p_sdo_token_i[1]]
-  set sdo_C_token_clk_port [get_ports p_sdo_token_i[2]] 
-  set sdo_D_token_clk_port [get_ports p_sdo_token_i[3]] 
+  #set sdo_B_token_clk_port [get_ports p_sdo_token_i[1]]        ==> OUTSPACE_CLK 
+  #set sdo_C_token_clk_port [get_ports p_sdo_token_i[2]]        ==> OUTSPACE_CLK
+  #set sdo_D_token_clk_port [get_ports p_sdo_token_i[3]]        ==> OUTSPACE_CLK
 
   # print parameters
   puts "\nConstrain design [get_attribute $sdc_current_design full_name] timing with the following settings:\n"
@@ -150,36 +150,39 @@ proc bsg_chip_ucsd_bsg_332_nodram_timing_constraint {bsg_reset_port \
 
   # tokens should be treated as clocks
   create_clock -period $in_token_clk_period -name sdo_A_token_clk $sdo_A_token_clk_port
-  create_clock -period $in_token_clk_period -name sdo_B_token_clk $sdo_B_token_clk_port
-  create_clock -period $in_token_clk_period -name sdo_C_token_clk $sdo_C_token_clk_port
-  create_clock -period $in_token_clk_period -name sdo_D_token_clk $sdo_D_token_clk_port
+  #create_clock -period $in_token_clk_period -name sdo_B_token_clk $sdo_B_token_clk_port
+  #create_clock -period $in_token_clk_period -name sdo_C_token_clk $sdo_C_token_clk_port
+  #create_clock -period $in_token_clk_period -name sdo_D_token_clk $sdo_D_token_clk_port
 
   # we declare these clocks as being asynchronous
   # note this disables all timing checks between groups
   # so you really need to be sure this is what you want!
 
-  if { $bsg_create_manycore_clk } {
-    set_clock_groups -asynchronous  \
-      -group $bsg_core_clk_name \
-      -group $bsg_master_io_clk_name \
-      -group $bsg_manycore_clk_name  \
-      -group {sdi_A_sclk} \
-      -group {sdi_B_sclk} \
-      -group {sdo_A_token_clk} \
-      -group {sdo_B_token_clk} \
-      -group {sdo_C_token_clk} \
-      -group {sdo_D_token_clk}
-   } else {
-    set_clock_groups -asynchronous  \
-      -group $bsg_core_clk_name \
-      -group $bsg_master_io_clk_name \
-      -group {sdi_A_sclk} \
-      -group {sdi_B_sclk} \
-      -group {sdo_A_token_clk} \
-      -group {sdo_B_token_clk} \
-      -group {sdo_C_token_clk} \
-      -group {sdo_D_token_clk}
-   }
+  #set_clock_groups -asynchronous -group [get_clocks $ui_clk_name]
+  #set_clock_groups -asynchronous -group [get_clocks DQS*]
+  #set_clock_groups -asynchronous  \
+  #    -group $bsg_core_clk_name \
+  #    -group $bsg_master_io_clk_name \
+  #    -group $bsg_manycore_clk_name  \
+  #    -group {sdi_A_sclk} \
+  #    -group {sdi_B_sclk} \
+  #    -group {sdi_C_sclk} \
+  #    -group {sdi_D_sclk} \
+  #    -group {sdo_A_token_clk} \
+  #    -group {sdo_B_token_clk} \
+  #    -group {sdo_C_token_clk} \
+  #    -group {sdo_D_token_clk}
+  # 
+  set_clock_groups -asynchronous  -group $bsg_core_clk_name             \
+                                  -group $bsg_master_io_clk_name        \
+                                  -group {sdi_A_sclk}                   \
+                                  -group {sdi_B_sclk}                   \
+                                  -group {sdo_A_token_clk}              \
+                                  -group {fsb_clk}                      \
+                                  -group {op_clk}                       \
+                                  -group {drlp_clk}                     \
+                                  -group [get_clocks DQS*]              \
+                                  -group {dfi_clk, dfi_2x_clk}          \
 
   #----------------------------------------------------------------------------
   # CDC checks
@@ -253,17 +256,17 @@ proc bsg_chip_ucsd_bsg_332_nodram_timing_constraint {bsg_reset_port \
                -period [get_attribute [get_clocks sdo_A_token_clk] period] \
                -add $sdo_A_token_clk_port
 
-  create_clock -name sdo_B_token_clk_BSG_CHIP_cdc \
-               -period [get_attribute [get_clocks sdo_B_token_clk] period] \
-               -add $sdo_B_token_clk_port
+  #create_clock -name sdo_B_token_clk_BSG_CHIP_cdc \
+  #             -period [get_attribute [get_clocks sdo_B_token_clk] period] \
+  #             -add $sdo_B_token_clk_port
 
-  create_clock -name sdo_C_token_clk_BSG_CHIP_cdc \
-               -period [get_attribute [get_clocks sdo_C_token_clk] period] \
-               -add $sdo_C_token_clk_port
+  #create_clock -name sdo_C_token_clk_BSG_CHIP_cdc \
+  #             -period [get_attribute [get_clocks sdo_C_token_clk] period] \
+  #             -add $sdo_C_token_clk_port
 
-  create_clock -name sdo_D_token_clk_BSG_CHIP_cdc \
-               -period [get_attribute [get_clocks sdo_D_token_clk] period] \
-               -add $sdo_D_token_clk_port
+  #create_clock -name sdo_D_token_clk_BSG_CHIP_cdc \
+  #             -period [get_attribute [get_clocks sdo_D_token_clk] period] \
+  #             -add $sdo_D_token_clk_port
 
   if { $bsg_create_manycore_clk } {
     create_clock -name manycore_clk_BSG_CHIP_cdc \
@@ -297,6 +300,12 @@ proc bsg_chip_ucsd_bsg_332_nodram_timing_constraint {bsg_reset_port \
   # clock uncertainty
 
   set_clock_uncertainty $core_clk_uncertainty [get_clocks $bsg_core_clk_name]
+  set_clock_uncertainty $core_clk_uncertainty [get_clocks fsb_clk]
+  set_clock_uncertainty $core_clk_uncertainty [get_clocks drlp_clk]
+  set_clock_uncertainty $core_clk_uncertainty [get_clocks op_clk]
+  set_clock_uncertainty $core_clk_uncertainty [get_clocks dfi_clk]
+  set_clock_uncertainty $core_clk_uncertainty [get_clocks dfi_2x_clk]
+  set_clock_uncertainty $core_clk_uncertainty [get_clocks $bsg_core_clk_name]
   set_clock_uncertainty $master_io_clk_uncertainty [get_clocks $bsg_master_io_clk_name]
 
   set_clock_uncertainty $in_io_clk_uncertainty [get_clocks sdi_A_sclk]
@@ -305,9 +314,9 @@ proc bsg_chip_ucsd_bsg_332_nodram_timing_constraint {bsg_reset_port \
   #set_clock_uncertainty $in_io_clk_uncertainty [get_clocks sdi_D_sclk]   DRAM_PIN
 
   set_clock_uncertainty $token_clk_uncertainty [get_clocks sdo_A_token_clk]
-  set_clock_uncertainty $token_clk_uncertainty [get_clocks sdo_B_token_clk]
-  set_clock_uncertainty $token_clk_uncertainty [get_clocks sdo_C_token_clk]
-  set_clock_uncertainty $token_clk_uncertainty [get_clocks sdo_D_token_clk]
+  #set_clock_uncertainty $token_clk_uncertainty [get_clocks sdo_B_token_clk]
+  #set_clock_uncertainty $token_clk_uncertainty [get_clocks sdo_C_token_clk]
+  #set_clock_uncertainty $token_clk_uncertainty [get_clocks sdo_D_token_clk]
 
   if { $bsg_create_manycore_clk } {
     set_clock_uncertainty $manycore_clk_uncertainty [get_clocks $bsg_manycore_clk_name]

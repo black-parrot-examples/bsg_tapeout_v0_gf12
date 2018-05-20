@@ -1,6 +1,7 @@
 puts "Info: Start script [info script]\n"
 
 proc bsg_dram_ctrl_timing_constraint {   \
+                dram_io_skew            \
                 ui_clk_name           \
                 dfi_clk_name            \
                 dfi_2x_clk_name          \
@@ -16,8 +17,10 @@ proc bsg_dram_ctrl_timing_constraint {   \
 } {
        ##################################################################
         #     THE CLOCKS INSIDED DRAM CONTROLLER
-        set dfi_clock_period [ expr ( [get_attribute [get_clocks $dfi_2x_clk_name] period] /2 )]
+        set dfi_clock_period [ expr ( [get_attribute [get_clocks $dfi_2x_clk_name] period]*2 )]
         set dfi_clock_source [get_attribute [get_clocks $dfi_clk_name] sources ] 
+        #this is the lataency from the PAD to the register pin, will be ignored after clock tree synthesis
+        set dq_clock_latency 2.89
 
         create_clock            -period    $dfi_clock_period \
                                 -name      DQS0                                              \
@@ -38,16 +41,18 @@ proc bsg_dram_ctrl_timing_constraint {   \
                                -invert                          \
                                                 $ck_n_port 
         
-        set_clock_latency 3.0 -source -early [get_clocks DDR_CK*]
-        set_clock_latency 1.5 -source -late  [get_clocks DDR_CK*]
-        
-        set_clock_groups -asynchronous -group [get_clocks $ui_clk_name]
-        set_clock_groups -asynchronous -group [get_clocks DQS*]
+        set_clock_latency 3.0                   -source -early [get_clocks DDR_CK*]
+        set_clock_latency 1.5                   -source -late  [get_clocks DDR_CK*]
+        set_clock_latency $dq_clock_latency     [get_clocks DQS*]
+       
+        ######### MOVED TO THE CHIP TIMING CONSTRAINS 
+        #set_clock_groups -asynchronous -group [get_clocks $ui_clk_name]
+        #set_clock_groups -asynchronous -group [get_clocks DQS*]
 
 
         #############################################################################################
         # INPUT/OUTPUT DELAY
-        set_output_delay 2.0             \
+        set_output_delay $dram_io_skew             \
                         $ctrl_ports      \
                         -clock [get_clocks DDR_CK_P] \
                         -max
@@ -57,10 +62,10 @@ proc bsg_dram_ctrl_timing_constraint {   \
                         -clock [get_clocks DDR_CK_P] \
                         -min
         
-        set_input_delay 1.0 $dq0_ports  -clock [get_clocks DQS0] -max
-        set_input_delay 0.0 $dq0_ports  -clock [get_clocks DQS0] -min
-        set_input_delay 1.0 $dq1_ports  -clock [get_clocks DQS1] -max
-        set_input_delay 0.0 $dq1_ports  -clock [get_clocks DQS1] -min
+        set_input_delay $dram_io_skew   $dq0_ports  -clock [get_clocks DQS0] -max
+        set_input_delay 0.0             $dq0_ports  -clock [get_clocks DQS0] -min
+        set_input_delay $dram_io_skew   $dq1_ports  -clock [get_clocks DQS1] -max
+        set_input_delay 0.0             $dq1_ports  -clock [get_clocks DQS1] -min
         
         ##############################################################################################
         # set strobe signal constrains
