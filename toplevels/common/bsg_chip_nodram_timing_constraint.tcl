@@ -220,7 +220,12 @@ proc bsg_chip_ucsd_bsg_332_nodram_timing_constraint {bsg_reset_port \
   set all_clk_period  [list $bsg_core_clk_period \
                             $in_token_clk_period \
                             $in_io_clk_period \
-                            $bsg_master_io_clk_period]
+                            $bsg_master_io_clk_period \
+                            $::FSB_CLOCK_PERIOD  \
+                            $::OUTERSPACE_CLOCK_PERIOD \
+                            $::DRLP_CLOCK_PERIOD       \
+                            [expr ( $::DFI_2X_CLOCK_PERIOD *2 )            ] \
+                            ]
 
   if { $bsg_create_manycore_clk } {
      lappend all_clk_period  $bsg_manycore_clk_period
@@ -258,6 +263,22 @@ proc bsg_chip_ucsd_bsg_332_nodram_timing_constraint {bsg_reset_port \
   create_clock -name sdo_A_token_clk_BSG_CHIP_cdc \
                -period [get_attribute [get_clocks sdo_A_token_clk] period] \
                -add $sdo_A_token_clk_port
+
+  create_clock -name fsb_clk_BSG_CHIP_cdc \
+               -period [get_attribute [get_clocks fsb_clk] period  ] \
+               -add    [get_attribute [get_clocks fsb_clk] sources ] 
+
+  create_clock -name op_clk_BSG_CHIP_cdc \
+               -period [get_attribute [get_clocks op_clk] period  ] \
+               -add    [get_attribute [get_clocks op_clk] sources ] 
+
+  create_clock -name drlp_clk_BSG_CHIP_cdc \
+               -period [get_attribute [get_clocks drlp_clk] period  ] \
+               -add    [get_attribute [get_clocks drlp_clk] sources ] 
+
+  create_clock -name dfi_clk_BSG_CHIP_cdc \
+               -period [expr ($::DFI_2X_CLOCK_PERIOD*2) ] \
+               -add    [get_attribute [get_clocks dfi_clk] sources ] 
 
   #create_clock -name sdo_B_token_clk_BSG_CHIP_cdc \
   #             -period [get_attribute [get_clocks sdo_B_token_clk] period] \
