@@ -148,6 +148,9 @@ proc bsg_chip_ucsd_bsg_332_nodram_timing_constraint {bsg_reset_port \
   #create_clock -period $in_io_clk_period -name sdi_C_sclk $sdi_C_sclk_port  ==> DRAM_PIN
   #create_clock -period $in_io_clk_period -name sdi_D_sclk $sdi_D_sclk_port  ==> DRAM_PIN
 
+  set_clock_latency 2.0 [get_attribute [get_clocks sdi_A_sclk] sources] -clock [get_clocks sdi_A_sclk]
+  set_clock_latency 2.0 [get_attribute [get_clocks sdi_B_sclk] sources] -clock [get_clocks sdi_B_sclk]
+
   # tokens should be treated as clocks
   create_clock -period $in_token_clk_period -name sdo_A_token_clk $sdo_A_token_clk_port
   #create_clock -period $in_token_clk_period -name sdo_B_token_clk $sdo_B_token_clk_port
