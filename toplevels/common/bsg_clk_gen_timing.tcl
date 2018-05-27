@@ -26,9 +26,26 @@ proc bsg_clk_gen_clock_create { osc_path clk_name bsg_tag_clk_name clk_gen_perio
     create_clock -period $clk_gen_period_int -name ${clk_name}_osc [get_pins ${osc_path}/clk_gen_osc_inst/clk_o]
     set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_int) / 100.0] ${clk_name}_osc
 
-    # this is for the output of the oscillator, which goes to the osc's bt client
-    create_clock -period $clk_gen_period_int -name ${clk_name}_btc [get_pins ${osc_path}/clk_gen_osc_inst/fdt/buf_btc_o]
-    set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_int) / 100.0] ${clk_name}_btc
+    echo "Detecting Version 1/2 of bsg_clk_gen"
+    set buf_btc_o_search [sizeof_collection [get_pins ${osc_path}/clk_gen_osc_inst/fdt/buf_btc_o]]
+    echo $buf_btc_o_search
+
+    # for version 1 bsg_clk_gen
+    if {$buf_btc_o_search} {
+        echo "Detected Version 1 of bsg_clk_gen"
+        # this is for the output of the oscillator, which goes to the osc's bt client
+        create_clock -period $clk_gen_period_int -name ${clk_name}_btc [get_pins ${osc_path}/clk_gen_osc_inst/fdt/buf_btc_o]
+        set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_int) / 100.0] ${clk_name}_btc
+        # clock domains being crossed into via bsg_tag
+        bsg_tag_add_client_cdc_timing_constraints $bsg_tag_clk_name ${clk_name}_btc
+
+    } else {
+        echo "Detected Version 2 of bsg_clk_gen"
+        create_clock -period $clk_gen_period_int -name ${clk_name}_btc [get_pins ${osc_path}/clk_gen_osc_inst/fdt/o]
+        set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_int) / 100.0] ${clk_name}_btc
+        # clock domains being crossed into via bsg_tag
+        bsg_tag_add_client_cdc_timing_constraints $bsg_tag_clk_name ${clk_name}_btc
+    }
 
     # these are generated clocks; we call them clocks to get preferred shielding and routing
     # nothing is actually timed with these
@@ -40,7 +57,6 @@ proc bsg_clk_gen_clock_create { osc_path clk_name bsg_tag_clk_name clk_gen_perio
     create_clock -period $clk_gen_period_ext    -name ${clk_name}  [get_pins ${osc_path}/mux_inst/macro.b1_i/stack_b0/ZN]
     set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_ext) / 100.0] ${clk_name}
 
-    # two clock domains being crossed into via bsg_tag
-    bsg_tag_add_client_cdc_timing_constraints $bsg_tag_clk_name ${clk_name}_btc
+    # clock domains being crossed into via bsg_tag
     bsg_tag_add_client_cdc_timing_constraints $bsg_tag_clk_name ${clk_name}_osc
 }
