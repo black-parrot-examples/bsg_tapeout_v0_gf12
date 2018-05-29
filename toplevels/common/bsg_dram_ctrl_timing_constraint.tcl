@@ -88,7 +88,7 @@ proc bsg_dram_ctrl_timing_constraint {   \
         
         #############################################################################################
         # set strobe signal constrains
-        set_register_merging [get_cells -hier tx_byte_slice] false
+#        set_register_merging [get_cells -hier tx_byte_slice] false
         #set_dont_touch [get_cells -filter "ref_name==PDB08DGZ"]
 }
 puts "Info: Completed script [info script]\n"
