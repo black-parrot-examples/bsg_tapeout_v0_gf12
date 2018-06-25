@@ -20,21 +20,22 @@ proc bsg_clk_gen_clock_create { osc_path clk_name bsg_tag_clk_name clk_gen_perio
     # this is for the output of the downsampler, goes to the clock selection mux
     set clk_gen_period_ds [expr $clk_gen_period_int * 2]
 
-    set suffix "/clk_gen_osc_inst/fdt/ICLK/Y"
-
     # this is for the output of the oscillator, which goes to the downsampler
-    create_clock -period $clk_gen_period_int -name ${clk_name}_osc [get_pins ${osc_path}/clk_gen_osc_inst/clk_o]
+    create_clock -period $clk_gen_period_int -name ${clk_name}_osc [get_pins -leaf -of_objects [get_nets ${osc_path}osc_clk_out] -filter "pin_direction==out"]
     set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_int) / 100.0] ${clk_name}_osc
+    set_disable_timing [get_cells ${osc_path}clk_gen_osc_inst/adt/*]
+    set_disable_timing [get_cells ${osc_path}clk_gen_osc_inst/cdt/*]
+    set_disable_timing [get_cells ${osc_path}clk_gen_osc_inst/fdt/*]
 
     echo "Detecting Version 1/2 of bsg_clk_gen"
-    set buf_btc_o_search [sizeof_collection [get_pins ${osc_path}/clk_gen_osc_inst/fdt/buf_btc_o]]
+    set buf_btc_o_search [sizeof_collection [get_pins ${osc_path}clk_gen_osc_inst/fdt/buf_btc_o]]
     echo $buf_btc_o_search
 
     # for version 1 bsg_clk_gen
     if {$buf_btc_o_search} {
         echo "Detected Version 1 of bsg_clk_gen"
         # this is for the output of the oscillator, which goes to the osc's bt client
-        create_clock -period $clk_gen_period_int -name ${clk_name}_btc [get_pins ${osc_path}/clk_gen_osc_inst/fdt/buf_btc_o]
+        create_clock -period $clk_gen_period_int -name ${clk_name}_btc [get_pins ${osc_path}clk_gen_osc_inst/fdt/buf_btc_o]
         set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_int) / 100.0] ${clk_name}_btc
         # clock domains being crossed into via bsg_tag
         bsg_tag_add_client_cdc_timing_constraints $bsg_tag_clk_name ${clk_name}_btc
@@ -51,11 +52,11 @@ proc bsg_clk_gen_clock_create { osc_path clk_name bsg_tag_clk_name clk_gen_perio
     # these are generated clocks; we call them clocks to get preferred shielding and routing
     # nothing is actually timed with these
 
-    create_clock -period $clk_gen_period_ds -name ${clk_name}_ds   [get_pins ${osc_path}/clk_gen_ds_inst/clk_r_o]
-    set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_int) / 100.0] ${clk_name}_ds
+    create_clock -period $clk_gen_period_ds  -name ${clk_name}_osc_ds [get_pins -leaf -of_objects [get_nets ${osc_path}ds_clk_out] -filter "pin_direction==out"]
+    set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_int) / 100.0] ${clk_name}_osc_ds
 
     # the output of the mux is the externally visible bonafide clock
-    create_clock -period $clk_gen_period_ext    -name ${clk_name}  [get_pins ${osc_path}/mux_inst/macro.b1_i/stack_b0/ZN]
+    create_clock -period $clk_gen_period_ext -name ${clk_name}        [get_pins -leaf -of_objects [get_nets ${osc_path}clk_o] -filter "pin_direction==out"]
     set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_ext) / 100.0] ${clk_name}
 
     # clock domains being crossed into via bsg_tag
