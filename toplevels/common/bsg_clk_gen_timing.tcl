@@ -23,9 +23,9 @@ proc bsg_clk_gen_clock_create { osc_path clk_name bsg_tag_clk_name clk_gen_perio
     # this is for the output of the oscillator, which goes to the downsampler
     create_clock -period $clk_gen_period_int -name ${clk_name}_osc [get_pins -leaf -of_objects [get_nets ${osc_path}osc_clk_out] -filter "pin_direction==out"]
     set_clock_uncertainty  [expr ($clock_uncertainty_percent * $clk_gen_period_int) / 100.0] ${clk_name}_osc
-    set_disable_timing [get_cells ${osc_path}clk_gen_osc_inst/adt/*]
-    set_disable_timing [get_cells ${osc_path}clk_gen_osc_inst/cdt/*]
-    set_disable_timing [get_cells ${osc_path}clk_gen_osc_inst/fdt/*]
+    #set_disable_timing [get_cells ${osc_path}clk_gen_osc_inst/adt/*]
+    #set_disable_timing [get_cells ${osc_path}clk_gen_osc_inst/cdt/*]
+    #set_disable_timing [get_cells ${osc_path}clk_gen_osc_inst/fdt/*]
 
     echo "Detecting Version 1/2 of bsg_clk_gen"
     set buf_btc_o_search [sizeof_collection [get_pins ${osc_path}clk_gen_osc_inst/fdt/buf_btc_o]]
