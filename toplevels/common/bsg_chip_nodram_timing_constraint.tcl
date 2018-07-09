@@ -176,16 +176,16 @@ proc bsg_chip_ucsd_bsg_332_nodram_timing_constraint {bsg_reset_port \
   #    -group {sdo_C_token_clk} \
   #    -group {sdo_D_token_clk}
   # 
-  set_clock_groups -asynchronous  -group $bsg_core_clk_name             \
-                                  -group $bsg_master_io_clk_name        \
-                                  -group {sdi_A_sclk}                   \
-                                  -group {sdi_B_sclk}                   \
-                                  -group {sdo_A_token_clk}              \
-                                  -group {fsb_clk}                      \
-                                  -group {op_clk}                       \
-                                  -group {drlp_clk}                     \
-                                  -group [get_clocks DQS*]              \
-                                  -group {dfi_clk, dfi_2x_clk}          \
+  set_clock_groups -asynchronous  -group $bsg_core_clk_name      \
+                                  -group $bsg_master_io_clk_name \
+                                  -group {sdi_A_sclk}            \
+                                  -group {sdi_B_sclk}            \
+                                  -group {sdo_A_token_clk}       \
+                                  -group {fsb_clk}               \
+                                  -group {op_clk}                \
+                                  -group {drlp_clk}              \
+                                  -group [get_clocks DQS*]       \
+                                  -group [get_clocks "dfi_clk_2x_osc dfi_clk_2x_osc_ds"] 
 
   #----------------------------------------------------------------------------
   # CDC checks
@@ -276,9 +276,9 @@ proc bsg_chip_ucsd_bsg_332_nodram_timing_constraint {bsg_reset_port \
                -period [get_attribute [get_clocks drlp_clk] period  ] \
                -add    [get_attribute [get_clocks drlp_clk] sources ] 
 
-  create_clock -name dfi_clk_BSG_CHIP_cdc \
+  create_clock -name dfi_clk_2x_osc_ds_BSG_CHIP_cdc \
                -period [expr ($::DFI_2X_CLOCK_PERIOD*2) ] \
-               -add    [get_attribute [get_clocks dfi_clk] sources ] 
+               -add    [get_attribute [get_clocks dfi_clk_2x_osc_ds] sources ] 
 
   #create_clock -name sdo_B_token_clk_BSG_CHIP_cdc \
   #             -period [get_attribute [get_clocks sdo_B_token_clk] period] \
@@ -327,8 +327,8 @@ proc bsg_chip_ucsd_bsg_332_nodram_timing_constraint {bsg_reset_port \
   set_clock_uncertainty $core_clk_uncertainty [get_clocks fsb_clk]
   set_clock_uncertainty $core_clk_uncertainty [get_clocks drlp_clk]
   set_clock_uncertainty $core_clk_uncertainty [get_clocks op_clk]
-  set_clock_uncertainty $core_clk_uncertainty [get_clocks dfi_clk]
-  set_clock_uncertainty $core_clk_uncertainty [get_clocks dfi_2x_clk]
+  set_clock_uncertainty $core_clk_uncertainty [get_clocks dfi_clk_2x_osc]
+  set_clock_uncertainty $core_clk_uncertainty [get_clocks dfi_clk_2x_osc_ds]
   set_clock_uncertainty $core_clk_uncertainty [get_clocks $bsg_core_clk_name]
   set_clock_uncertainty $master_io_clk_uncertainty [get_clocks $bsg_master_io_clk_name]
 
