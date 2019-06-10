@@ -21,7 +21,7 @@ proc bsg_comm_link_timing_constraints { \
 
   set sdi_clk sdi_${ch_idx}_clk
   create_clock -period $io_clk_period -name $sdi_clk $ch_in_clk_port
-  set_clock_latency 1.4 [get_clocks $sdi_clk]
+  set_clock_latency 300 [get_clocks $sdi_clk]
 
   set sdo_tkn_clk sdo_${ch_idx}_tkn_clk
   create_clock -period $tkn_clk_period -name $sdo_tkn_clk $ch_out_tkn_port
