@@ -29,12 +29,12 @@ proc bsg_comm_link_timing_constraints { \
   set max_input_delay [expr ($io_clk_period / 2.0) - $max_io_skew_time]
   set min_input_delay $max_io_skew_time
 
-  set_input_delay -clock $sdi_clk -max $max_input_delay $ch_in_dv_port -network_latency_included 
-  set_input_delay -clock $sdi_clk -max $max_input_delay $ch_in_dv_port -network_latency_included -add_delay -clock_fall
-  set_input_delay -clock $sdi_clk -min $min_input_delay $ch_in_dv_port -network_latency_included
-  set_input_delay -clock $sdi_clk -min $min_input_delay $ch_in_dv_port -network_latency_included -add_delay -clock_fall
+  set_input_delay -clock $sdi_clk -max $max_input_delay $ch_in_dv_port 
+  set_input_delay -clock $sdi_clk -max $max_input_delay $ch_in_dv_port -add_delay -clock_fall
+  set_input_delay -clock $sdi_clk -min $min_input_delay $ch_in_dv_port
+  set_input_delay -clock $sdi_clk -min $min_input_delay $ch_in_dv_port -add_delay -clock_fall
 
-#set USE_GENERATED_CLOCK 1
+set USE_GENERATED_CLOCK 0
 if { $USE_GENERATED_CLOCK } {
   set sdo_clk sdo_${ch_idx}_clk
   create_generated_clock -edges {2 4 6} -master_clock $iom_clk_name -source [get_attribute [get_clocks $iom_clk_name] sources] -name $sdo_clk $ch_out_clk_port
@@ -49,8 +49,8 @@ if { $USE_GENERATED_CLOCK } {
   set_output_delay -clock $sdo_clk -min $min_output_delay $ch_out_dv_port -add_delay -clock_fall
 } else {
   foreach_in_collection obj $ch_out_dv_port {
-    set_data_check -from $ch_out_clk_port -to $obj -setup [expr $iom_clk_period / 2.0 - $max_io_skew_time - $output_cell_rise_fall_difference / 2.0]
-    set_data_check -from $ch_out_clk_port -to $obj -hold  [expr $iom_clk_period / 2.0 - $max_io_skew_time - $output_cell_rise_fall_difference / 2.0]
+    set_data_check -from $ch_out_clk_port -to $obj -setup [expr $io_clk_period / 4.0 - $max_io_skew_time]
+    set_data_check -from $ch_out_clk_port -to $obj -hold  [expr $io_clk_period / 4.0 - $max_io_skew_time]
     set_multicycle_path -end   -setup 1 -to $obj
     set_multicycle_path -start -hold  0 -to $obj
   }
