@@ -11,6 +11,7 @@ proc bsg_comm_link_timing_constraints { \
   ch_out_tkn_port                       \
   input_cell_rise_fall_difference       \
   output_cell_rise_fall_difference      \
+  uncertainty                           \
 } {
   set iom_clk_period [get_attribute [get_clocks $iom_clk_name] period]
   set io_clk_period  [expr $iom_clk_period * 2.0]
@@ -21,10 +22,12 @@ proc bsg_comm_link_timing_constraints { \
 
   set sdi_clk sdi_${ch_idx}_clk
   create_clock -period $io_clk_period -name $sdi_clk $ch_in_clk_port
+  set_clock_uncertainty $uncertainty [get_clocks $sdi_clk]
   #set_clock_latency 600 [get_clocks $sdi_clk]
 
   set sdo_tkn_clk sdo_${ch_idx}_tkn_clk
   create_clock -period $tkn_clk_period -name $sdo_tkn_clk $ch_out_tkn_port
+  set_clock_uncertainty $uncertainty [get_clocks $sdo_tkn_clk]
 
   set max_input_delay [expr ($io_clk_period / 2.0) - $max_io_skew_time]
   set min_input_delay $max_io_skew_time
