@@ -85,6 +85,11 @@ import bsg_wormhole_router_pkg::StrictX;
 , parameter wh_cord_width_lp = wh_cord_markers_pos_p[1] - wh_cord_markers_pos_p[0]
 
 , parameter bsg_ready_and_link_sif_width_lp = `bsg_ready_and_link_sif_width(ct_width_p)
+
+// Inserts twofer fifos between the links_i/o and the channel tunnels. Used to
+// pipeline long distances on the chip.
+, parameter prev_num_hops_p = 0
+, parameter next_num_hops_p = 0
 )
 
 ( input  core_clk_i
@@ -155,6 +160,7 @@ import bsg_wormhole_router_pkg::StrictX;
                                      ,.ct_remote_credits_p( ct_remote_credits_p )
                                      ,.ct_use_pseudo_large_fifo_p( ct_use_pseudo_large_fifo_p )
                                      ,.ct_lg_credit_decimation_p( ct_lg_credit_decimation_p )
+                                     ,.num_hops_p(prev_num_hops_p)
                                      )
     prev
       (.core_clk_i( core_clk_i )
@@ -236,6 +242,7 @@ import bsg_wormhole_router_pkg::StrictX;
                                      ,.ct_remote_credits_p( ct_remote_credits_p )
                                      ,.ct_use_pseudo_large_fifo_p( ct_use_pseudo_large_fifo_p )
                                      ,.ct_lg_credit_decimation_p( ct_lg_credit_decimation_p )
+                                     ,.num_hops_p(next_num_hops_p)
                                      )
     next
       (.core_clk_i( core_clk_i )
@@ -280,6 +287,10 @@ import bsg_tag_pkg::*;
 , parameter ct_lg_credit_decimation_p = -1
 
 , parameter bsg_ready_and_link_sif_width_lp = `bsg_ready_and_link_sif_width(ct_width_p)
+
+// Inserts twofer fifos between the links_i/o and the channel tunnels. Used to
+// pipeline long distances on the chip.
+, parameter num_hops_p = 0
 )
 
 ( input  core_clk_i
@@ -303,7 +314,7 @@ import bsg_tag_pkg::*;
 , output [ct_num_in_p-1:0][bsg_ready_and_link_sif_width_lp-1:0] links_o
 );
 
-  genvar i;
+  genvar i, h;
 
   typedef struct packed { 
       logic up_link_reset;
@@ -344,11 +355,11 @@ import bsg_tag_pkg::*;
   // declare the bsg_ready_and_link_sif_s struct
   `declare_bsg_ready_and_link_sif_s(ct_width_p, bsg_ready_and_link_sif_s);
 
-  bsg_ready_and_link_sif_s [ct_num_in_p-1:0] links_cast_li;
-  assign links_cast_li = links_i;
+  bsg_ready_and_link_sif_s [num_hops_p:0][ct_num_in_p-1:0] links_cast_li;
+  assign links_cast_li[num_hops_p] = links_i;
 
-  bsg_ready_and_link_sif_s [ct_num_in_p-1:0] links_cast_lo;
-  assign links_o = links_cast_lo;;
+  bsg_ready_and_link_sif_s [num_hops_p:0][ct_num_in_p-1:0] links_cast_lo;
+  assign links_o = links_cast_lo[num_hops_p];
 
   bsg_tag_client #(.width_p( $bits(link_io_tag_data_lo) ), .default_p( 0 ))
     btc_link_io
@@ -470,20 +481,56 @@ import bsg_tag_pkg::*;
           (.clk_i( core_clk_i )
           ,.reset_i ( ct_core_tag_data_lo.fifo_reset )
 
-          ,.ready_o ( links_cast_lo[i].ready_and_rev )
-          ,.data_i  ( links_cast_li[i].data )
-          ,.v_i     ( links_cast_li[i].v )
-
           ,.v_o    ( ct_fifo_valid_lo[i] )
           ,.data_o ( ct_fifo_data_lo[i] )
           ,.yumi_i ( ct_fifo_yumi_li[i] )
+
+          ,.ready_o ( links_cast_lo[0][i].ready_and_rev )
+          ,.data_i  ( links_cast_li[0][i].data )
+          ,.v_i     ( links_cast_li[0][i].v )
           );
 
-      assign links_cast_lo[i].v = ct_valid_lo[i];
-      assign links_cast_lo[i].data = ct_data_lo[i];
-      assign ct_yumi_li[i] = ct_valid_lo[i] & links_cast_li[i].ready_and_rev;
+      assign links_cast_lo[0][i].v = ct_valid_lo[i];
+      assign links_cast_lo[0][i].data = ct_data_lo[i];
+      assign ct_yumi_li[i] = ct_valid_lo[i] & links_cast_li[0][i].ready_and_rev;
 
     end: ct
+
+  for (i = 0; i < ct_num_in_p; i++)
+    begin: r
+      for (h = 0; h < num_hops_p; h++)
+        begin: hop
+
+          bsg_two_fifo #(.width_p( ct_width_p ))
+            fifo_to_ct
+              (.clk_i( core_clk_i )
+              ,.reset_i ( ct_core_tag_data_lo.fifo_reset )
+
+              ,.v_o     ( links_cast_li[h][i].v )
+              ,.data_o  ( links_cast_li[h][i].data )
+              ,.yumi_i  ( links_cast_lo[h][i].ready_and_rev & links_cast_li[h][i].v )
+
+              ,.v_i     ( links_cast_li[h+1][i].v )
+              ,.data_i  ( links_cast_li[h+1][i].data )
+              ,.ready_o ( links_cast_lo[h+1][i].ready_and_rev )
+              );
+
+          bsg_two_fifo #(.width_p( ct_width_p ))
+            fifo_to_rtr
+              (.clk_i( core_clk_i )
+              ,.reset_i ( ct_core_tag_data_lo.fifo_reset )
+
+              ,.ready_o (links_cast_li[h][i].ready_and_rev)
+              ,.data_i  (links_cast_lo[h][i].data)
+              ,.v_i     (links_cast_lo[h][i].v)
+
+              ,.v_o    (links_cast_lo[h+1][i].v)
+              ,.data_o (links_cast_lo[h+1][i].data)
+              ,.yumi_i (links_cast_li[h+1][i].ready_and_rev & links_cast_lo[h+1][i].v)
+              );
+          
+        end: hop
+    end: r
 
 endmodule
 
