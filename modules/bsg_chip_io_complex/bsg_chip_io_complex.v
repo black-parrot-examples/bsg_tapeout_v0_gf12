@@ -73,6 +73,7 @@ import bsg_wormhole_router_pkg::StrictX;
 , parameter link_num_channels_p = -1
 , parameter link_lg_fifo_depth_p = -1
 , parameter link_lg_credit_to_token_decimation_p = -1
+, parameter link_use_extra_data_bit_p = 0
 
 , parameter ct_width_p = -1
 , parameter ct_num_in_p = -1
@@ -83,6 +84,7 @@ import bsg_wormhole_router_pkg::StrictX;
 , parameter int wh_cord_markers_pos_p[1:0] = '{-1, -1}
 , parameter wh_len_width_p = -1
 , parameter wh_cord_width_lp = wh_cord_markers_pos_p[1] - wh_cord_markers_pos_p[0]
+, parameter tag_cord_width_p = wh_cord_width_lp
 
 , parameter bsg_ready_and_link_sif_width_lp = `bsg_ready_and_link_sif_width(ct_width_p)
 
@@ -136,25 +138,20 @@ import bsg_wormhole_router_pkg::StrictX;
 
   genvar i,j;
 
-  typedef struct packed { 
-      logic reset;
-      logic [wh_cord_width_lp-1:0] cord;
-  } rtr_core_tag_payload_s;
-
-  rtr_core_tag_payload_s [num_router_groups_p-1:0] rtr_core_tag_data_lo;
-
   // declare the bsg_ready_and_link_sif_s struct
   `declare_bsg_ready_and_link_sif_s(ct_width_p, bsg_ready_and_link_sif_s);
 
-  // forward wormhole router links (P leaves this module)
-  bsg_ready_and_link_sif_s [num_router_groups_p-1:0][ct_num_in_p-1:0][E:P] rtr_links_li;
-  bsg_ready_and_link_sif_s [num_router_groups_p-1:0][ct_num_in_p-1:0][E:P] rtr_links_lo;
+  bsg_ready_and_link_sif_s [ct_num_in_p-1:0] prev_ct_links_li;
+  bsg_ready_and_link_sif_s [ct_num_in_p-1:0] prev_ct_links_lo;
+  bsg_ready_and_link_sif_s [ct_num_in_p-1:0] next_ct_links_li;
+  bsg_ready_and_link_sif_s [ct_num_in_p-1:0] next_ct_links_lo;
 
   bsg_chip_io_complex_links_ct_fifo #(.link_width_p( link_width_p )
                                      ,.link_channel_width_p( link_channel_width_p )
                                      ,.link_num_channels_p( link_num_channels_p )
                                      ,.link_lg_fifo_depth_p( link_lg_fifo_depth_p )
                                      ,.link_lg_credit_to_token_decimation_p( link_lg_credit_to_token_decimation_p )
+                                     ,.link_use_extra_data_bit_p ( link_use_extra_data_bit_p )
                                      ,.ct_width_p( ct_width_p )
                                      ,.ct_num_in_p( ct_num_in_p )
                                      ,.ct_remote_credits_p( ct_remote_credits_p )
@@ -180,63 +177,38 @@ import bsg_wormhole_router_pkg::StrictX;
       ,.co_data_o( co2_data_o )
       ,.co_tkn_i( co2_tkn_i )
 
-      ,.links_i({ rtr_links_lo[0][1][W], rtr_links_lo[0][0][W] })
-      ,.links_o({ rtr_links_li[0][1][W], rtr_links_li[0][0][W] })
+      ,.links_i( prev_ct_links_li )
+      ,.links_o( prev_ct_links_lo )
       );
 
-  for (j = 0; j < num_router_groups_p; j++)
-    begin: rtr
-
-      bsg_tag_client #(.width_p( $bits(rtr_core_tag_data_lo[j]) ), .default_p( 0 ))
-        btc
-          (.bsg_tag_i     ( rtr_core_tag_lines_i[j] )
-          ,.recv_clk_i    ( core_clk_i )
-          ,.recv_reset_i  ( 1'b0 )
-          ,.recv_new_r_o  ()
-          ,.recv_data_r_o ( rtr_core_tag_data_lo[j] )
-          );
-
-      assign rtr_reset_o[j] = rtr_core_tag_data_lo[j].reset;
-      assign rtr_cord_o[j] = rtr_core_tag_data_lo[j].cord;
-
-      for (i = 0; i < ct_num_in_p; i++)
-        begin: ct
-
-          bsg_wormhole_router_generalized #(.flit_width_p( ct_width_p )
-                                           ,.dims_p( 1 )
-                                           ,.cord_markers_pos_p( wh_cord_markers_pos_p )
-                                           ,.routing_matrix_p( StrictX )
-                                           ,.len_width_p( wh_len_width_p )
-                                           )   
-            rtr
-              (.clk_i    ( core_clk_i )
-              ,.reset_i  ( rtr_core_tag_data_lo[j].reset )
-              ,.my_cord_i( rtr_core_tag_data_lo[j].cord )
-              ,.link_i   ( rtr_links_li[j][i] )
-              ,.link_o   ( rtr_links_lo[j][i] )
-              );
-
-          assign rtr_links_li[j][i][P] = rtr_links_i[j][i];
-          assign rtr_links_o[j][i] = rtr_links_lo[j][i][P];
-
-        end:ct
-    end: rtr
-
-  // Stitcher
-  for (j = 1; j < num_router_groups_p; j++)
-    begin
-      for (i = 0; i < ct_num_in_p; i++)
-        begin
-          assign rtr_links_li[j-1][i][E] = rtr_links_lo[j][i][W];
-          assign rtr_links_li[j][i][W]   = rtr_links_lo[j-1][i][E];
-        end
-    end
+  bsg_chip_io_complex_router_network #(.ct_width_p( ct_width_p )
+                                      ,.num_router_groups_p  ( num_router_groups_p )
+                                      ,.num_in_p             ( ct_num_in_p )
+                                      ,.wh_cord_markers_pos_p( wh_cord_markers_pos_p )
+                                      ,.wh_len_width_p       ( wh_len_width_p )
+                                      ,.tag_cord_width_p     ( tag_cord_width_p )
+                                      )
+    network
+      (.core_clk_i( core_clk_i )
+      ,.rtr_core_tag_lines_i( rtr_core_tag_lines_i )
+      
+      ,.rtr_links_i ( rtr_links_i )
+      ,.rtr_links_o ( rtr_links_o )
+      ,.rtr_reset_o ( rtr_reset_o )
+      ,.rtr_cord_o  ( rtr_cord_o  )
+      
+      ,.west_links_i( prev_ct_links_lo )
+      ,.west_links_o( prev_ct_links_li )
+      ,.east_links_i( next_ct_links_lo )
+      ,.east_links_o( next_ct_links_li )
+      );
 
   bsg_chip_io_complex_links_ct_fifo #(.link_width_p( link_width_p )
                                      ,.link_channel_width_p( link_channel_width_p )
                                      ,.link_num_channels_p( link_num_channels_p )
                                      ,.link_lg_fifo_depth_p( link_lg_fifo_depth_p )
                                      ,.link_lg_credit_to_token_decimation_p( link_lg_credit_to_token_decimation_p )
+                                     ,.link_use_extra_data_bit_p ( link_use_extra_data_bit_p )
                                      ,.ct_width_p( ct_width_p )
                                      ,.ct_num_in_p( ct_num_in_p )
                                      ,.ct_remote_credits_p( ct_remote_credits_p )
@@ -262,12 +234,117 @@ import bsg_wormhole_router_pkg::StrictX;
       ,.co_data_o( co_data_o )
       ,.co_tkn_i( co_tkn_i )
 
-      ,.links_i({ rtr_links_lo[num_router_groups_p-1][1][E], rtr_links_lo[num_router_groups_p-1][0][E] })
-      ,.links_o({ rtr_links_li[num_router_groups_p-1][1][E], rtr_links_li[num_router_groups_p-1][0][E] })
+      ,.links_i( next_ct_links_li )
+      ,.links_o( next_ct_links_lo )
       );
 
 endmodule
 
+
+module bsg_chip_io_complex_router_network
+
+import bsg_tag_pkg::*;
+import bsg_noc_pkg::*;
+import bsg_wormhole_router_pkg::*;
+
+#(parameter     ct_width_p                      = -1
+, parameter     num_router_groups_p             = -1
+, parameter     num_in_p                        = -1
+, parameter int wh_cord_markers_pos_p[1:0]      = '{-1, -1}
+, parameter     wh_len_width_p                  = -1
+, parameter     wh_cord_width_lp                = wh_cord_markers_pos_p[1] - wh_cord_markers_pos_p[0]
+, parameter     tag_cord_width_p                = wh_cord_width_lp
+, parameter     bsg_ready_and_link_sif_width_lp = `bsg_ready_and_link_sif_width(ct_width_p)
+)
+
+( input  core_clk_i
+, input  bsg_tag_s [num_router_groups_p-1:0] rtr_core_tag_lines_i
+
+, output logic [num_router_groups_p-1:0]                       rtr_reset_o
+, output logic [num_router_groups_p-1:0][wh_cord_width_lp-1:0] rtr_cord_o
+, input        [num_router_groups_p-1:0][num_in_p-1:0][bsg_ready_and_link_sif_width_lp-1:0] rtr_links_i
+, output       [num_router_groups_p-1:0][num_in_p-1:0][bsg_ready_and_link_sif_width_lp-1:0] rtr_links_o
+
+, input  [num_in_p-1:0][bsg_ready_and_link_sif_width_lp-1:0] west_links_i
+, output [num_in_p-1:0][bsg_ready_and_link_sif_width_lp-1:0] west_links_o
+, input  [num_in_p-1:0][bsg_ready_and_link_sif_width_lp-1:0] east_links_i
+, output [num_in_p-1:0][bsg_ready_and_link_sif_width_lp-1:0] east_links_o
+);
+
+  genvar i,j;
+  
+  typedef struct packed { 
+      logic reset;
+      logic [tag_cord_width_p-1:0] cord;
+  } rtr_core_tag_payload_s;
+  
+  rtr_core_tag_payload_s [num_router_groups_p-1:0] rtr_core_tag_data_lo;
+  
+  // declare the bsg_ready_and_link_sif_s struct
+  `declare_bsg_ready_and_link_sif_s(ct_width_p, bsg_ready_and_link_sif_s);
+  
+  // forward wormhole router links (P leaves this module)
+  bsg_ready_and_link_sif_s [num_router_groups_p-1:0][num_in_p-1:0][E:P] rtr_links_li;
+  bsg_ready_and_link_sif_s [num_router_groups_p-1:0][num_in_p-1:0][E:P] rtr_links_lo;
+
+  for (j = 0; j < num_router_groups_p; j++)
+    begin: rtr
+
+      bsg_tag_client #(.width_p( $bits(rtr_core_tag_data_lo[j]) ), .default_p( 0 ))
+        btc
+          (.bsg_tag_i     ( rtr_core_tag_lines_i[j] )
+          ,.recv_clk_i    ( core_clk_i )
+          ,.recv_reset_i  ( 1'b0 )
+          ,.recv_new_r_o  ()
+          ,.recv_data_r_o ( rtr_core_tag_data_lo[j] )
+          );
+
+      assign rtr_reset_o[j] = rtr_core_tag_data_lo[j].reset;
+      assign rtr_cord_o [j] = wh_cord_width_lp'(rtr_core_tag_data_lo[j].cord);
+
+      for (i = 0; i < num_in_p; i++)
+        begin: ct
+          bsg_wormhole_router_generalized #(.flit_width_p      ( ct_width_p )
+                                           ,.dims_p            ( 1 )
+                                           ,.cord_markers_pos_p( wh_cord_markers_pos_p )
+                                           ,.routing_matrix_p  ( StrictX )
+                                           ,.len_width_p       ( wh_len_width_p )
+                                           )   
+            rtr
+              (.clk_i    ( core_clk_i )
+              ,.reset_i  ( rtr_core_tag_data_lo[j].reset )
+              ,.my_cord_i( wh_cord_width_lp'(rtr_core_tag_data_lo[j].cord) )
+              ,.link_i   ( rtr_links_li[j][i] )
+              ,.link_o   ( rtr_links_lo[j][i] )
+              );
+          
+          // Proc link
+          assign rtr_links_li[j][i][P]       = rtr_links_i [j][i];
+          assign rtr_links_o [j][i]          = rtr_links_lo[j][i][P];
+          
+          // West end link
+          if (j == 0)
+            begin
+              assign rtr_links_li[j][i][W]   = west_links_i   [i];
+              assign west_links_o   [i]      = rtr_links_lo[j][i][W];
+            end
+          // Stitcher between routers
+          if (j > 0)
+            begin
+              assign rtr_links_li[j]  [i][W] = rtr_links_lo[j-1][i][E];
+              assign rtr_links_li[j-1][i][E] = rtr_links_lo[j]  [i][W];
+            end
+          // East end link
+          if (j == num_router_groups_p-1)
+            begin
+              assign rtr_links_li[j][i][E]   = east_links_i   [i];
+              assign east_links_o   [i]      = rtr_links_lo[j][i][E];
+            end
+        end
+        
+    end
+
+endmodule
 
 
 module bsg_chip_io_complex_links_ct_fifo
@@ -279,6 +356,7 @@ import bsg_tag_pkg::*;
 , parameter link_num_channels_p = -1
 , parameter link_lg_fifo_depth_p = -1
 , parameter link_lg_credit_to_token_decimation_p = -1
+, parameter link_use_extra_data_bit_p = 0
 
 , parameter ct_width_p = -1
 , parameter ct_num_in_p = -1
@@ -394,6 +472,7 @@ import bsg_tag_pkg::*;
                          ,.num_channels_p( link_num_channels_p )
                          ,.lg_fifo_depth_p( link_lg_fifo_depth_p )
                          ,.lg_credit_to_token_decimation_p( link_lg_credit_to_token_decimation_p )
+                         ,.use_extra_data_bit_p( link_use_extra_data_bit_p )
                          )
     uplink
       (.core_clk_i        ( core_clk_i )
@@ -428,6 +507,7 @@ import bsg_tag_pkg::*;
                            ,.num_channels_p( link_num_channels_p )
                            ,.lg_fifo_depth_p( link_lg_fifo_depth_p )
                            ,.lg_credit_to_token_decimation_p( link_lg_credit_to_token_decimation_p )
+                           ,.use_extra_data_bit_p( link_use_extra_data_bit_p )
                            )
     downlink
       (.core_clk_i        ( core_clk_i )
