@@ -254,6 +254,7 @@ import bsg_wormhole_router_pkg::*;
 , parameter     wh_len_width_p                  = -1
 , parameter     wh_cord_width_lp                = wh_cord_markers_pos_p[1] - wh_cord_markers_pos_p[0]
 , parameter     tag_cord_width_p                = wh_cord_width_lp
+, parameter     num_repeater_nodes_p            = 0
 , parameter     bsg_ready_and_link_sif_width_lp = `bsg_ready_and_link_sif_width(ct_width_p)
 )
 
@@ -286,6 +287,36 @@ import bsg_wormhole_router_pkg::*;
   // forward wormhole router links (P leaves this module)
   bsg_ready_and_link_sif_s [num_router_groups_p-1:0][num_in_p-1:0][E:P] rtr_links_li;
   bsg_ready_and_link_sif_s [num_router_groups_p-1:0][num_in_p-1:0][E:P] rtr_links_lo;
+  
+  // repeater node links
+  bsg_ready_and_link_sif_s [num_in_p-1:0] west_repeater_links_li, west_repeater_links_lo;
+  bsg_ready_and_link_sif_s [num_in_p-1:0] east_repeater_links_li, east_repeater_links_lo;
+  
+  bsg_noc_repeater_node #(.width_p    ( ct_width_p )
+                         ,.num_in_p   ( num_in_p )
+                         ,.num_nodes_p( num_repeater_nodes_p )
+                         )
+    west_nodes
+      (.clk_i         ( core_clk_i )
+      ,.side_A_reset_i( rtr_core_tag_data_lo[0].reset )
+      ,.side_A_links_i( west_repeater_links_lo )
+      ,.side_A_links_o( west_repeater_links_li )
+      ,.side_B_links_i( west_links_i )
+      ,.side_B_links_o( west_links_o )
+      );
+  
+  bsg_noc_repeater_node #(.width_p    ( ct_width_p )
+                         ,.num_in_p   ( num_in_p )
+                         ,.num_nodes_p( num_repeater_nodes_p )
+                         )
+    east_nodes
+      (.clk_i         ( core_clk_i )
+      ,.side_A_reset_i( rtr_core_tag_data_lo[num_router_groups_p-1].reset )
+      ,.side_A_links_i( east_repeater_links_lo )
+      ,.side_A_links_o( east_repeater_links_li )
+      ,.side_B_links_i( east_links_i )
+      ,.side_B_links_o( east_links_o )
+      );
 
   for (j = 0; j < num_router_groups_p; j++)
     begin: rtr
@@ -325,8 +356,8 @@ import bsg_wormhole_router_pkg::*;
           // West end link
           if (j == 0)
             begin
-              assign rtr_links_li[j][i][W]   = west_links_i   [i];
-              assign west_links_o   [i]      = rtr_links_lo[j][i][W];
+              assign rtr_links_li[j][i][W] = west_repeater_links_li[i];
+              assign west_repeater_links_lo[i] = rtr_links_lo[j][i][W];
             end
           // Stitcher between routers
           if (j > 0)
@@ -337,8 +368,8 @@ import bsg_wormhole_router_pkg::*;
           // East end link
           if (j == num_router_groups_p-1)
             begin
-              assign rtr_links_li[j][i][E]   = east_links_i   [i];
-              assign east_links_o   [i]      = rtr_links_lo[j][i][E];
+              assign rtr_links_li[j][i][E] = east_repeater_links_li[i];
+              assign east_repeater_links_lo[i] = rtr_links_lo[j][i][E];
             end
         end
         

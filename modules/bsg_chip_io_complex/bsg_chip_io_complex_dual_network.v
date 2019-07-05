@@ -93,6 +93,7 @@ import bsg_noc_pkg::*;
 , parameter     network_a_wh_len_width_p             = -1
 , parameter     network_a_tag_cord_width_p           = -1
 , parameter     network_a_wh_cord_width_lp           = network_a_wh_cord_markers_pos_p[1]
+, parameter     network_a_num_repeater_nodes_p       = 0
 
 
 , parameter     network_b_num_router_groups_p        = -1
@@ -101,6 +102,7 @@ import bsg_noc_pkg::*;
 , parameter     network_b_wh_len_width_p             = -1
 , parameter     network_b_tag_cord_width_p           = -1
 , parameter     network_b_wh_cord_width_lp           = network_b_wh_cord_markers_pos_p[1]
+, parameter     network_b_num_repeater_nodes_p       = 0
 
 , parameter bsg_ready_and_link_sif_width_lp          = `bsg_ready_and_link_sif_width(ct_width_p)
 )
@@ -208,6 +210,7 @@ import bsg_noc_pkg::*;
                                       ,.wh_cord_markers_pos_p( network_a_wh_cord_markers_pos_p )
                                       ,.wh_len_width_p       ( network_a_wh_len_width_p )
                                       ,.tag_cord_width_p     ( network_a_tag_cord_width_p )
+                                      ,.num_repeater_nodes_p ( network_a_num_repeater_nodes_p )
                                       )
     network_a
       (.core_clk_i( core_clk_i )
@@ -230,6 +233,7 @@ import bsg_noc_pkg::*;
                                       ,.wh_cord_markers_pos_p( network_b_wh_cord_markers_pos_p )
                                       ,.wh_len_width_p       ( network_b_wh_len_width_p )
                                       ,.tag_cord_width_p     ( network_b_tag_cord_width_p )
+                                      ,.num_repeater_nodes_p ( network_b_num_repeater_nodes_p )
                                       )
     network_b
       (.core_clk_i( core_clk_i )
