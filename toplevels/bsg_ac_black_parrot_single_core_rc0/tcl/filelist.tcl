@@ -209,6 +209,7 @@ set SVERILOG_SOURCE_FILES [join "
   $bsg_designs_target_dir/v/bsg_chip.v
   $bsg_designs_target_dir/v/black_parrot.v
   $bsg_designs_dir/modules/bsg_chip_io_complex/bsg_chip_io_complex.v
+  $bsg_designs_dir/modules/bsg_chip_io_complex/bsg_noc_repeater_node.v
   $bsg_designs_target_dir/v/bsg_clk_gen_power_domain.v
   $bsg_designs_target_dir/v/bsg_clk_gen_osc.v
 
